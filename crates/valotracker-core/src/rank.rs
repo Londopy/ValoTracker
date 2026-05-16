@@ -280,6 +280,3 @@ impl RankCache {
         self.match_id.clear();
     }
 }
-h_id.clear();
-    }
-}

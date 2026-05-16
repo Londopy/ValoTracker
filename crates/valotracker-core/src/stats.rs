@@ -261,5 +261,3 @@ fn aggregate_stats(stats: &[MatchStat]) -> (f32, f32, f32) {
 
     (headshot_pct, kd_ratio, win_rate)
 }
-kd_ratio, win_rate)
-}
