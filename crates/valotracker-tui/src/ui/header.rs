@@ -19,10 +19,7 @@ pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
     let accent = Style::default().fg(Color::Rgb(100, 180, 255));
     let sep = Span::styled("  │  ", dim);
 
-    let version = Span::styled(
-        "ValoTracker v0.1.0",
-        bold.fg(Color::Rgb(255, 215, 0)),
-    );
+    let version = Span::styled("ValoTracker v0.1.0", bold.fg(Color::Rgb(255, 215, 0)));
 
     let (map_str, queue_str, server_str) = if let Some(snap) = &app.snapshot {
         (

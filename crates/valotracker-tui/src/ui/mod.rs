@@ -41,11 +41,7 @@ fn draw_match(frame: &mut Frame, app: &App) {
     draw_footer(frame, chunks[2], app);
 }
 
-fn draw_footer(
-    frame: &mut Frame,
-    area: ratatui::layout::Rect,
-    app: &App,
-) {
+fn draw_footer(frame: &mut Frame, area: ratatui::layout::Rect, app: &App) {
     use ratatui::{
         style::{Color, Style},
         text::{Line, Span},

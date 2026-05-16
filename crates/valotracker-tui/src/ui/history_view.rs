@@ -63,8 +63,8 @@ fn draw_table(frame: &mut Frame, area: Rect, app: &App) {
         .unwrap_or(&[])
         .iter()
         .map(|m| {
-            use valotracker_core::tier_to_short;
             use std::time::{SystemTime, UNIX_EPOCH};
+            use valotracker_core::tier_to_short;
 
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)

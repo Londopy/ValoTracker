@@ -21,9 +21,11 @@
 
 pub mod auth;
 pub mod client;
-pub mod coregame;
 pub mod config;
+pub mod coregame;
+pub mod engine;
 pub mod error;
+pub mod history;
 pub mod lockfile;
 pub mod models;
 pub mod names;
@@ -34,8 +36,6 @@ pub mod rank;
 pub mod state;
 pub mod stats;
 pub mod websocket;
-pub mod engine;
-pub mod history;
 
 // Convenient re-exports for UI crates
 pub use auth::Auth;

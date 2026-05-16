@@ -1,10 +1,8 @@
 use std::time::{Duration, Instant};
 
 use valotracker_core::{
-    engine::Engine,
-    models::match_data::MatchSnapshot,
-    history::MatchHistory,
-    Config, ValoTrackerError,
+    engine::Engine, history::MatchHistory, models::match_data::MatchSnapshot, Config,
+    ValoTrackerError,
 };
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(30);
@@ -89,7 +87,9 @@ impl App {
 
     /// Refresh the match snapshot.
     pub async fn refresh(&mut self) {
-        let Some(engine) = &mut self.engine else { return };
+        let Some(engine) = &mut self.engine else {
+            return;
+        };
         self.is_loading = true;
         let start = Instant::now();
 

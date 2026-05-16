@@ -144,7 +144,9 @@ impl MatchHistory {
     fn db_path() -> Result<PathBuf, ValoTrackerError> {
         let appdata = std::env::var("APPDATA")
             .map_err(|_| ValoTrackerError::other("APPDATA environment variable not set"))?;
-        Ok(PathBuf::from(appdata).join("ValoTracker").join("history.db"))
+        Ok(PathBuf::from(appdata)
+            .join("ValoTracker")
+            .join("history.db"))
     }
 
     fn migrate(&self) -> Result<(), ValoTrackerError> {
@@ -315,7 +317,8 @@ impl MatchHistory {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// Load all players for a specific match.
@@ -350,7 +353,8 @@ impl MatchHistory {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// How many past matches have you shared with this player?
@@ -397,11 +401,15 @@ impl MatchHistory {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// Full encounter history for a specific player, newest first.
-    pub fn get_player_encounters(&self, puuid: &str) -> Result<Vec<PlayerEncounter>, ValoTrackerError> {
+    pub fn get_player_encounters(
+        &self,
+        puuid: &str,
+    ) -> Result<Vec<PlayerEncounter>, ValoTrackerError> {
         let mut stmt = self.conn.prepare(
             "SELECT mp.match_id, m.map, m.queue, m.saved_at, mp.agent,
                     mp.kills, mp.deaths, mp.assists, mp.hs_pct, mp.kd_ratio,
@@ -440,7 +448,8 @@ impl MatchHistory {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// Check whether a player's rank has climbed suspiciously fast.
@@ -478,8 +487,7 @@ impl MatchHistory {
             .as_secs() as i64;
         let days_elapsed = ((now_secs - first_saved_at) / 86400).max(0) as u32;
 
-        let flagged =
-            tier_delta >= threshold_tiers as i32 && days_elapsed <= threshold_days;
+        let flagged = tier_delta >= threshold_tiers as i32 && days_elapsed <= threshold_days;
 
         Ok(Some(SmurfFlag {
             puuid: puuid.to_owned(),
@@ -515,7 +523,8 @@ impl MatchHistory {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// Aggregate map performance stats for a player.
@@ -543,7 +552,8 @@ impl MatchHistory {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// Find the player's nemesis — the opponent they've lost to most.
@@ -583,7 +593,8 @@ impl MatchHistory {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 }
 
@@ -614,8 +625,7 @@ pub fn summarize_encounters(encounters: &[PlayerEncounter]) -> EncounterSummary 
         .count() as u32;
 
     // Most played agent
-    let mut agent_counts: std::collections::HashMap<&str, u32> =
-        std::collections::HashMap::new();
+    let mut agent_counts: std::collections::HashMap<&str, u32> = std::collections::HashMap::new();
     for e in encounters {
         *agent_counts.entry(e.agent.as_str()).or_default() += 1;
     }
@@ -629,8 +639,16 @@ pub fn summarize_encounters(encounters: &[PlayerEncounter]) -> EncounterSummary 
     let worst_game = encounters
         .iter()
         .min_by(|a, b| {
-            let kd_a = if a.deaths > 0 { a.kills as f32 / a.deaths as f32 } else { a.kills as f32 };
-            let kd_b = if b.deaths > 0 { b.kills as f32 / b.deaths as f32 } else { b.kills as f32 };
+            let kd_a = if a.deaths > 0 {
+                a.kills as f32 / a.deaths as f32
+            } else {
+                a.kills as f32
+            };
+            let kd_b = if b.deaths > 0 {
+                b.kills as f32 / b.deaths as f32
+            } else {
+                b.kills as f32
+            };
             kd_a.partial_cmp(&kd_b).unwrap_or(std::cmp::Ordering::Equal)
         })
         .cloned();
@@ -676,47 +694,47 @@ impl<T> OptionalExt<T> for Result<T, rusqlite::Error> {
 
 #[derive(Debug, Clone)]
 pub struct MyMatchResult {
-    pub match_id:  String,
-    pub saved_at:  i64,
-    pub map:       String,
-    pub queue:     String,
-    pub agent:     String,
-    pub kills:     u32,
-    pub deaths:    u32,
-    pub assists:   u32,
-    pub hs_pct:    f32,
-    pub kd_ratio:  f32,
+    pub match_id: String,
+    pub saved_at: i64,
+    pub map: String,
+    pub queue: String,
+    pub agent: String,
+    pub kills: u32,
+    pub deaths: u32,
+    pub assists: u32,
+    pub hs_pct: f32,
+    pub kd_ratio: f32,
     pub rank_tier: u8,
-    pub rr:        i32,
-    pub rr_delta:  i32,
-    pub won:       Option<bool>,
+    pub rr: i32,
+    pub rr_delta: i32,
+    pub won: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
 pub struct PartyWinRate {
     pub party_size: u8,
-    pub games:      u32,
-    pub win_rate:   f32,
+    pub games: u32,
+    pub win_rate: f32,
 }
 
 #[derive(Debug, Clone)]
 pub struct Session {
-    pub id:          i64,
-    pub started_at:  i64,
-    pub ended_at:    i64,
-    pub games:       u32,
-    pub wins:        u32,
-    pub rr_delta:    i32,
+    pub id: i64,
+    pub started_at: i64,
+    pub ended_at: i64,
+    pub games: u32,
+    pub wins: u32,
+    pub rr_delta: i32,
     /// Game number within the session where win/loss streak first flipped.
-    pub tilt_point:  Option<u32>,
+    pub tilt_point: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
 pub struct HourlyStats {
-    pub hour:     u8,
-    pub games:    u32,
+    pub hour: u8,
+    pub games: u32,
     pub win_rate: f32,
-    pub avg_kd:   f32,
+    pub avg_kd: f32,
 }
 
 impl MatchHistory {
@@ -750,20 +768,20 @@ impl MatchHistory {
 
         let map_row = |row: &rusqlite::Row| {
             Ok(MyMatchResult {
-                match_id:  row.get(0)?,
-                saved_at:  row.get(1)?,
-                map:       row.get::<_, Option<String>>(2)?.unwrap_or_default(),
-                queue:     row.get::<_, Option<String>>(3)?.unwrap_or_default(),
-                agent:     row.get::<_, Option<String>>(4)?.unwrap_or_default(),
-                kills:     row.get::<_, Option<i32>>(5)?.unwrap_or(0) as u32,
-                deaths:    row.get::<_, Option<i32>>(6)?.unwrap_or(0) as u32,
-                assists:   row.get::<_, Option<i32>>(7)?.unwrap_or(0) as u32,
-                hs_pct:    row.get::<_, Option<f64>>(8)?.unwrap_or(0.0) as f32,
-                kd_ratio:  row.get::<_, Option<f64>>(9)?.unwrap_or(0.0) as f32,
+                match_id: row.get(0)?,
+                saved_at: row.get(1)?,
+                map: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                queue: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                agent: row.get::<_, Option<String>>(4)?.unwrap_or_default(),
+                kills: row.get::<_, Option<i32>>(5)?.unwrap_or(0) as u32,
+                deaths: row.get::<_, Option<i32>>(6)?.unwrap_or(0) as u32,
+                assists: row.get::<_, Option<i32>>(7)?.unwrap_or(0) as u32,
+                hs_pct: row.get::<_, Option<f64>>(8)?.unwrap_or(0.0) as f32,
+                kd_ratio: row.get::<_, Option<f64>>(9)?.unwrap_or(0.0) as f32,
                 rank_tier: row.get::<_, Option<i32>>(10)?.unwrap_or(0) as u8,
-                rr:        row.get::<_, Option<i32>>(11)?.unwrap_or(0),
-                rr_delta:  row.get::<_, Option<i32>>(12)?.unwrap_or(0),
-                won:       row.get::<_, Option<i32>>(13)?.map(|v| v != 0),
+                rr: row.get::<_, Option<i32>>(11)?.unwrap_or(0),
+                rr_delta: row.get::<_, Option<i32>>(12)?.unwrap_or(0),
+                won: row.get::<_, Option<i32>>(13)?.map(|v| v != 0),
             })
         };
 
@@ -773,7 +791,8 @@ impl MatchHistory {
             stmt.query_map(rusqlite::params![puuid, limit as i64], map_row)?
         };
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// RR over time — returns `(unix_timestamp, rr)` pairs ordered oldest first.
@@ -785,9 +804,13 @@ impl MatchHistory {
              ORDER BY m.saved_at ASC",
         )?;
         let rows = stmt.query_map(rusqlite::params![puuid], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, Option<i32>>(1)?.unwrap_or(0)))
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, Option<i32>>(1)?.unwrap_or(0),
+            ))
         })?;
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// Win rate broken down by how many people you queued with (1 = solo, 5 = full stack).
@@ -812,11 +835,12 @@ impl MatchHistory {
         let rows = stmt.query_map(rusqlite::params![puuid], |row| {
             Ok(PartyWinRate {
                 party_size: row.get::<_, i64>(0)? as u8,
-                games:      row.get::<_, i64>(1)? as u32,
-                win_rate:   row.get::<_, f64>(2)? as f32,
+                games: row.get::<_, i64>(1)? as u32,
+                win_rate: row.get::<_, f64>(2)? as f32,
             })
         })?;
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 
     /// Group matches into sessions (gap > 60 min = new session).
@@ -871,22 +895,23 @@ impl MatchHistory {
         )?;
         let rows = stmt.query_map(rusqlite::params![puuid], |row| {
             Ok(HourlyStats {
-                hour:     row.get::<_, i64>(0)? as u8,
-                games:    row.get::<_, i64>(1)? as u32,
+                hour: row.get::<_, i64>(0)? as u8,
+                games: row.get::<_, i64>(1)? as u32,
                 win_rate: row.get::<_, f64>(2)? as f32,
-                avg_kd:   row.get::<_, Option<f64>>(3)?.unwrap_or(0.0) as f32,
+                avg_kd: row.get::<_, Option<f64>>(3)?.unwrap_or(0.0) as f32,
             })
         })?;
-        rows.collect::<Result<Vec<_>, _>>().map_err(ValoTrackerError::Database)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(ValoTrackerError::Database)
     }
 }
 
 fn build_session(id: i64, matches: &[MyMatchResult]) -> Session {
     let started_at = matches.first().map(|m| m.saved_at).unwrap_or(0);
-    let ended_at   = matches.last().map(|m| m.saved_at).unwrap_or(0);
-    let games      = matches.len() as u32;
-    let wins       = matches.iter().filter(|m| m.won == Some(true)).count() as u32;
-    let rr_delta   = matches.iter().map(|m| m.rr_delta).sum::<i32>();
+    let ended_at = matches.last().map(|m| m.saved_at).unwrap_or(0);
+    let games = matches.len() as u32;
+    let wins = matches.iter().filter(|m| m.won == Some(true)).count() as u32;
+    let rr_delta = matches.iter().map(|m| m.rr_delta).sum::<i32>();
 
     // Tilt point: first game where the running streak flipped direction
     let mut tilt_point = None;
@@ -907,5 +932,13 @@ fn build_session(id: i64, matches: &[MyMatchResult]) -> Session {
         }
     }
 
-    Session { id, started_at, ended_at, games, wins, rr_delta, tilt_point }
+    Session {
+        id,
+        started_at,
+        ended_at,
+        games,
+        wins,
+        rr_delta,
+        tilt_point,
+    }
 }

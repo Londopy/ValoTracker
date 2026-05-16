@@ -122,6 +122,8 @@ impl Config {
     fn path() -> Result<PathBuf, ValoTrackerError> {
         let appdata = std::env::var("APPDATA")
             .map_err(|_| ValoTrackerError::other("APPDATA environment variable not set"))?;
-        Ok(PathBuf::from(appdata).join("ValoTracker").join("config.toml"))
+        Ok(PathBuf::from(appdata)
+            .join("ValoTracker")
+            .join("config.toml"))
     }
 }

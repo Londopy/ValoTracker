@@ -1,11 +1,7 @@
-use pyo3::prelude::*;
 use pyo3::exceptions::PyRuntimeError;
+use pyo3::prelude::*;
 
-use valotracker_core::{
-    engine::Engine,
-    rank::tier_to_name,
-    state::GameState,
-};
+use valotracker_core::{engine::Engine, rank::tier_to_name, state::GameState};
 
 // ── PyPlayer ──────────────────────────────────────────────────────────────────
 
@@ -155,8 +151,8 @@ impl ValoTrackerClient {
     /// Raises `RuntimeError` if VALORANT is not running or auth fails.
     #[new]
     fn new() -> PyResult<Self> {
-        let rt = tokio::runtime::Runtime::new()
-            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let rt =
+            tokio::runtime::Runtime::new().map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let engine = rt
             .block_on(Engine::init())
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
