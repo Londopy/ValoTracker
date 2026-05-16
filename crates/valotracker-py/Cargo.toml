@@ -1,6 +1,6 @@
 [package]
 name = "valotracker-py"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Valorant match tracker — Python bindings"
 
@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 valotracker-core  = { path = "../valotracker-core" }
-pyo3     = { version = "0.22", features = ["extension-module"] }
+pyo3     = { version = "0.23", features = ["extension-module"] }
 tokio    = { workspace = true }

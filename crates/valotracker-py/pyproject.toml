@@ -4,18 +4,18 @@ build-backend = "maturin"
 
 [project]
 name = "ValoTracker"
-version = "1.0.0"
+version = "1.0.1"
 description = "Valorant match tracker — Python bindings"
+readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
-python-source = "python"
+python-source = "../../python"
 module-name = "valotracker._valotracker"
 
 [project.urls]
 Homepage    = "https://github.com/Londopy/ValoTracker"
 Repository  = "https://github.com/Londopy/ValoTracker"
 Issues      = "https://github.com/Londopy/ValoTracker/issues"
-Changelog   = "https://github.com/Londopy/ValoTracker/blob/main/CHANGELOG.md"
