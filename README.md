@@ -1,4 +1,4 @@
-# vt — Valorant Tracker
+# ValoTracker
 
 A fast, privacy-first Valorant match tracker written in Rust.
 
@@ -22,13 +22,13 @@ A fast, privacy-first Valorant match tracker written in Rust.
   win-rate breakdown, session tracking, nemesis/rivalry leaderboard
 - **TUI + optional GUI** — rich terminal UI by default; build with
   `--features gui` for a native egui window
-- **Python bindings** — `pip install vt` exposes the engine to Python via PyO3
+- **Python bindings** — `pip install ValoTracker` exposes the engine to Python via PyO3
 
 ---
 
 ## Disclaimer
 
-`vt` reads data from VALORANT's local client endpoints
+`ValoTracker` reads data from VALORANT's local client endpoints
 (`https://127.0.0.1:{port}`) using credentials stored on your own machine.
 It does not bypass any external API, inject into the game process, or
 violate Riot's Terms of Service as interpreted for read-only local tooling.
@@ -41,24 +41,24 @@ Use at your own risk. The authors are not affiliated with Riot Games.
 
 ### Pre-built binaries (Windows)
 
-Download `vt.exe` (TUI) or `vt-gui.exe` (GUI) from the
-[latest release](https://github.com/your-username/vt/releases/latest) and
+Download `ValoTracker.exe` (TUI) or `ValoTracker-gui.exe` (GUI) from the
+[latest release](https://github.com/Londopy/ValoTracker/releases/latest) and
 drop it anywhere on your `PATH`.
 
 ### Build from source
 
 ```powershell
 # Clone
-git clone https://github.com/your-username/vt.git
-cd vt
+git clone https://github.com/Londopy/ValoTracker.git
+cd ValoTracker
 
 # TUI (default)
-cargo build --release -p vt-tui
-# Binary: target\release\vt.exe
+cargo build --release -p ValoTracker-tui
+# Binary: target\release\ValoTracker.exe
 
 # GUI (egui)
-cargo build --release -p vt-gui --features gui
-# Binary: target\release\vt-gui.exe
+cargo build --release -p ValoTracker-gui --features gui
+# Binary: target\release\ValoTracker-gui.exe
 ```
 
 **Requirements:** Rust 1.78+, Windows 10/11, VALORANT installed and running.
@@ -70,7 +70,7 @@ cargo build --release -p vt-gui --features gui
 ### TUI
 
 ```
-vt.exe
+ValoTracker.exe
 ```
 
 | Key | Action |
@@ -86,7 +86,7 @@ vt.exe
 ### GUI
 
 ```
-vt-gui.exe
+ValoTracker-gui.exe
 ```
 
 Click any player with a 👁 icon to open their encounter history side panel.
@@ -96,13 +96,13 @@ Click any player with a 👁 icon to open their encounter history side panel.
 ## Python bindings
 
 ```bash
-pip install vt
+pip install ValoTracker
 ```
 
 ```python
-import vt
+import ValoTracker
 
-client = vt.VtClient()
+client = ValoTracker.ValoTrackerClient()
 client.wait_for_match()          # blocks until you enter a match
 
 players = client.get_players()
@@ -123,7 +123,7 @@ for pid, members in parties.items():
 
 ## Configuration
 
-`vt` stores its config at `%APPDATA%\vt\config.toml`. It is created
+`ValoTracker` stores its config at `%APPDATA%\ValoTracker\config.toml`. It is created
 automatically on first run with all defaults.
 
 ```toml
@@ -154,19 +154,21 @@ You can also edit all display toggles live from within the TUI by pressing
 ## Project layout
 
 ```
-vt/
+ValoTracker/
 ├── crates/
-│   ├── vt-core/    # Engine (async Rust, no UI code)
-│   ├── vt-tui/     # ratatui terminal frontend
-│   ├── vt-gui/     # egui desktop GUI (--features gui)
-│   └── vt-py/      # PyO3 Python bindings → PyPI
-└── python/         # Pure-Python package wrapping vt-py
-    └── vt/
+│   ├── ValoTracker-core/    # Engine (async Rust, no UI code)
+│   ├── ValoTracker-tui/     # ratatui terminal frontend
+│   ├── ValoTracker-gui/     # egui desktop GUI (--features gui)
+│   └── ValoTracker-py/      # PyO3 Python bindings → PyPI
+└── python/         # Pure-Python package wrapping ValoTracker-py
+    └── ValoTracker/
 ```
 
 ---
 
 ## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 PRs welcome. Please run before submitting:
 
@@ -181,3 +183,9 @@ cargo test --workspace
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## Disclaimer
+
+See [DISCLAIMER.md](DISCLAIMER.md).

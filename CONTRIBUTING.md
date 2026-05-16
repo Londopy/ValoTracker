@@ -1,4 +1,4 @@
-# Contributing to vt
+# Contributing to ValoTracker
 
 Thanks for your interest in contributing! Here's everything you need to get started.
 
@@ -7,9 +7,9 @@ Thanks for your interest in contributing! Here's everything you need to get star
 ## Getting Started
 
 ```powershell
-git clone https://github.com/your-username/vt.git
-cd vt
-cargo build -p vt-tui
+git clone https://github.com/Londopy/ValoTracker.git
+cd ValoTracker
+cargo build -p valotracker-tui
 ```
 
 VALORANT must be running on Windows to test any live match features. For everything else (history, config, UI layout) you can work offline.
@@ -20,14 +20,14 @@ VALORANT must be running on Windows to test any live match features. For everyth
 
 ```
 crates/
-├── vt-core/   # Engine — all API calls, data models, SQLite history
-├── vt-tui/    # ratatui terminal UI
-├── vt-gui/    # egui desktop GUI (cargo build --features gui)
-└── vt-py/     # PyO3 Python bindings
+├── valotracker-core/   # Engine — all API calls, data models, SQLite history
+├── valotracker-tui/    # ratatui terminal UI
+├── valotracker-gui/    # egui desktop GUI (cargo build --features gui)
+└── valotracker-py/     # PyO3 Python bindings
 python/        # Pure-Python wrapper package
 ```
 
-**The golden rule:** `vt-core` must never import from any UI crate. Keep the engine clean.
+**The golden rule:** `valotracker-core` must never import from any UI crate. Keep the engine clean.
 
 ---
 
@@ -48,10 +48,10 @@ All three must pass with zero errors/warnings before opening a PR.
 ## Code Style
 
 - Rust edition 2021 throughout
-- Use `tracing` for logging in library code — no bare `println!` in `vt-core`
-- All public API items in `vt-core` should have `///` doc comments
+- Use `tracing` for logging in library code — no bare `println!` in `valotracker-core`
+- All public API items in `valotracker-core` should have `///` doc comments
 - Prefer `thiserror`-derived errors; avoid `unwrap()` in library code
-- Keep async code in `vt-core`; UI crates drive it via `tokio::runtime`
+- Keep async code in `valotracker-core`; UI crates drive it via `tokio::runtime`
 
 ---
 

@@ -1,0 +1,20 @@
+[package]
+name = "valotracker-gui"
+version = "1.0.0"
+edition = "2021"
+description = "Valorant match tracker - egui desktop GUI"
+
+[[bin]]
+name = "valotracker-gui"
+path = "src/main.rs"
+
+[features]
+default = []
+gui = ["dep:eframe", "dep:egui"]
+
+[dependencies]
+valotracker-core = { path = "../valotracker-core" }
+tokio   = { workspace = true }
+anyhow  = { workspace = true }
+eframe  = { version = "0.28", optional = true }
+egui    = { version = "0.28", optional = true }
