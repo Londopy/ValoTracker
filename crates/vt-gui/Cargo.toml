@@ -1,0 +1,20 @@
+[package]
+name = "vt-gui"
+version = "0.1.0"
+edition = "2021"
+description = "Valorant match tracker - egui desktop GUI"
+
+[[bin]]
+name = "vt-gui"
+path = "src/main.rs"
+
+[features]
+default = []
+gui = ["dep:eframe", "dep:egui"]
+
+[dependencies]
+vt-core = { path = "../vt-core" }
+tokio   = { workspace = true }
+anyhow  = { workspace = true }
+eframe  = { version = "0.28", optional = true }
+egui    = { version = "0.28", optional = true }

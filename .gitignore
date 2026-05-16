@@ -1,0 +1,39 @@
+# Rust build artifacts
+/target/
+**/target/
+
+# Cargo lock kept for binaries, ignored for libraries
+# (workspace root keeps it)
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.whl
+
+# maturin output
+/python/dist/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / local config
+.env
+*.env.local
+
+# Test databases
+*.db
+*.db-journal
