@@ -204,6 +204,7 @@ CREATE INDEX IF NOT EXISTS idx_match_players_match_id ON match_players(match_id)
 
 impl MatchHistory {
     /// Save a full match snapshot to the database.
+    #[allow(clippy::too_many_arguments)]
     pub fn save_match(
         &self,
         match_id: &str,

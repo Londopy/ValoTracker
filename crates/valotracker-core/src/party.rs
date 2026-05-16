@@ -55,12 +55,10 @@ pub fn assign_party_icons(groups: &HashMap<String, PartyGroup>) -> HashMap<Strin
     multi.sort_by_key(|g| &g.party_id);
 
     let mut icons: HashMap<String, char> = HashMap::new();
-    let mut icon_idx = 0;
 
-    for group in &multi {
+    for (icon_idx, group) in multi.iter().enumerate() {
         let icon = ICONS[icon_idx % ICONS.len()];
         icons.insert(group.party_id.clone(), icon);
-        icon_idx += 1;
     }
 
     // Solo parties — just a dot
