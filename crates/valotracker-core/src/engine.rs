@@ -147,7 +147,7 @@ impl Engine {
         let stats_results = futures::future::join_all(stats_futures).await;
         let player_stats: HashMap<String, stats::PlayerStats> = puuids
             .iter()
-            .zip(stats_results.into_iter())
+            .zip(stats_results)
             .map(|(puuid, res)| {
                 (
                     puuid.clone(),

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::ValoTrackerError;
 
 /// Full application configuration, stored at `%APPDATA%\ValoTracker\config.toml`.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Config {
     #[serde(default)]
     pub display: DisplayConfig,
@@ -54,16 +54,6 @@ pub struct FeaturesConfig {
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            display: DisplayConfig::default(),
-            weapon: WeaponConfig::default(),
-            features: FeaturesConfig::default(),
-        }
-    }
-}
 
 impl Default for DisplayConfig {
     fn default() -> Self {
