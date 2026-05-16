@@ -69,9 +69,11 @@ pub const ACCENT:          egui::Color32 = egui::Color32::from_rgb(255,  70,  85
 pub const DIM:             egui::Color32 = egui::Color32::DARK_GRAY;
 pub const HEADER:          egui::Color32 = egui::Color32::from_rgb(160, 160, 160);
 pub const PARTY_ENEMY:     egui::Color32 = egui::Color32::from_rgb(240,  80,  80);
+#[allow(dead_code)]
 pub const STREAMER_TAG:    egui::Color32 = egui::Color32::from_rgb(255, 165,   0);
 pub const MET_COLOR:       egui::Color32 = egui::Color32::from_rgb(220, 200,  80);
 pub const BG_PANEL:        egui::Color32 = egui::Color32::from_rgb( 18,  18,  25);
 pub const BG_CENTRAL:      egui::Color32 = egui::Color32::from_rgb( 15,  15,  20);
 pub const BG_STATUSBAR:    egui::Color32 = egui::Color32::from_rgb( 12,  12,  18);
+#[allow(dead_code)]
 pub const BG_ROW_ALT:      egui::Color32 = egui::Color32::from_rgba_premultiplied(255, 255, 255, 4);
