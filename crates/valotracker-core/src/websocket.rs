@@ -40,8 +40,7 @@ pub async fn run_websocket(
         .body(())
         .map_err(|e| ValoTrackerError::other(format!("WebSocket request build error: {e}")))?;
 
-    let (mut ws, _) =
-        connect_async_tls_with_config(request, None, false, Some(connector)).await?;
+    let (mut ws, _) = connect_async_tls_with_config(request, None, false, Some(connector)).await?;
 
     // Subscribe to presence events
     let subscribe_msg = serde_json::json!([5, EVENT_PRESENCES]).to_string();
@@ -71,10 +70,7 @@ fn parse_presence_event(raw: &str, puuid: &str) -> Option<GameState> {
         return None;
     }
 
-    let presences = arr[2]
-        .get("data")?
-        .get("presences")?
-        .as_array()?;
+    let presences = arr[2].get("data")?.get("presences")?.as_array()?;
 
     let player = presences.iter().find(|p| {
         p.get("puuid")

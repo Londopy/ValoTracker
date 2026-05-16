@@ -63,7 +63,10 @@ impl Auth {
     ///
     /// Requires VALORANT to be running. Reads from:
     ///   `GET https://127.0.0.1:{port}/entitlements/v1/token`
-    pub async fn from_lockfile(lockfile: &Lockfile, client: &Client) -> Result<Self, ValoTrackerError> {
+    pub async fn from_lockfile(
+        lockfile: &Lockfile,
+        client: &Client,
+    ) -> Result<Self, ValoTrackerError> {
         // 1. Entitlements token + access token + PUUID
         let ent_url = lockfile.local_url("/entitlements/v1/token");
         let ent: EntitlementsResponse = client
@@ -94,8 +97,7 @@ impl Auth {
             .and_then(|args| {
                 args.iter().find_map(|a| {
                     let s = a.as_str()?;
-                    s.strip_prefix("-ares-deployment=")
-                        .map(|r| r.to_owned())
+                    s.strip_prefix("-ares-deployment=").map(|r| r.to_owned())
                 })
             })
             .unwrap_or_else(|| "na".to_owned());
@@ -121,13 +123,11 @@ impl Auth {
 
     /// Fetch the current client version from the unofficial valorant-version API.
     async fn fetch_client_version() -> Result<String, ValoTrackerError> {
-        let resp: ClientVersionResponse = reqwest::get(
-            "https://valorant-api.com/v1/version",
-        )
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
+        let resp: ClientVersionResponse = reqwest::get("https://valorant-api.com/v1/version")
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
         Ok(resp.data.riot_client_version)
     }
 
@@ -166,7 +166,11 @@ impl Auth {
             "Authorization",
             &format!("Bearer {}", self.access_token),
         );
-        insert(&mut map, "X-Riot-Entitlements-JWT", &self.entitlements_token);
+        insert(
+            &mut map,
+            "X-Riot-Entitlements-JWT",
+            &self.entitlements_token,
+        );
         insert(&mut map, "X-Riot-ClientVersion", &self.client_version);
         insert(&mut map, "X-Riot-ClientPlatform", PLATFORM_TOKEN);
 

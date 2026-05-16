@@ -8,10 +8,7 @@ use crate::{
     error::ValoTrackerError,
     lockfile::Lockfile,
     models::{match_data::MatchSnapshot, player::ResolvedPlayer},
-    names,
-    party,
-    pregame,
-    presence,
+    names, party, pregame, presence,
     rank::{self, RankCache},
     state::GameState,
     stats,
@@ -148,12 +145,7 @@ impl Engine {
         let player_stats: HashMap<String, stats::PlayerStats> = puuids
             .iter()
             .zip(stats_results)
-            .map(|(puuid, res)| {
-                (
-                    puuid.clone(),
-                    res.unwrap_or_default(),
-                )
-            })
+            .map(|(puuid, res)| (puuid.clone(), res.unwrap_or_default()))
             .collect();
 
         // 6. Build party map

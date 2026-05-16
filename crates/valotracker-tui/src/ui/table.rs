@@ -8,10 +8,7 @@ use ratatui::{
 
 use valotracker_core::{tier_to_name, tier_to_short, ResolvedPlayer};
 
-use crate::{
-    app::App,
-    ui::colors::*,
-};
+use crate::{app::App, ui::colors::*};
 
 /// Render the main player table.
 pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
@@ -123,8 +120,8 @@ fn build_player_row<'a>(
     let party_cell = Cell::from(party_str).style(Style::default().fg(party_color));
 
     // ── Agent cell ─────────────────────────────────────────────────────────
-    let agent_cell = Cell::from(player.agent_name.clone())
-        .style(Style::default().fg(Color::Rgb(200, 200, 200)));
+    let agent_cell =
+        Cell::from(player.agent_name.clone()).style(Style::default().fg(Color::Rgb(200, 200, 200)));
 
     // ── Name cell ──────────────────────────────────────────────────────────
     let name_color = if player.is_ally {
@@ -156,8 +153,7 @@ fn build_player_row<'a>(
     } else {
         tier_to_name(player.rank.tier).to_owned()
     };
-    let rank_cell = Cell::from(rank_name)
-        .style(Style::default().fg(rank_color(player.rank.tier)));
+    let rank_cell = Cell::from(rank_name).style(Style::default().fg(rank_color(player.rank.tier)));
 
     // ── RR cell ────────────────────────────────────────────────────────────
     let rr_cell = Cell::from(player.rank.rr.to_string())
@@ -169,16 +165,22 @@ fn build_player_row<'a>(
     } else {
         let name = tier_to_name(player.rank.peak_tier);
         // Truncate to 8 chars to save space
-        if name.len() > 8 { name[..8].to_owned() } else { name.to_owned() }
+        if name.len() > 8 {
+            name[..8].to_owned()
+        } else {
+            name.to_owned()
+        }
     };
-    let peak_cell = Cell::from(peak_name)
-        .style(Style::default().fg(rank_color(player.rank.peak_tier)).add_modifier(Modifier::DIM));
+    let peak_cell = Cell::from(peak_name).style(
+        Style::default()
+            .fg(rank_color(player.rank.peak_tier))
+            .add_modifier(Modifier::DIM),
+    );
 
     // ── HS% cell ───────────────────────────────────────────────────────────
     let hs_val = player.stats.headshot_pct;
     let hs_cell = if cfg.show_hs {
-        Cell::from(format!("{:.0}%", hs_val * 100.0))
-            .style(Style::default().fg(hs_color(hs_val)))
+        Cell::from(format!("{:.0}%", hs_val * 100.0)).style(Style::default().fg(hs_color(hs_val)))
     } else {
         Cell::from("—")
     };
@@ -186,8 +188,7 @@ fn build_player_row<'a>(
     // ── WR% cell ───────────────────────────────────────────────────────────
     let wr_val = player.stats.win_rate;
     let wr_cell = if cfg.show_wr {
-        Cell::from(format!("{:.0}%", wr_val * 100.0))
-            .style(Style::default().fg(wr_color(wr_val)))
+        Cell::from(format!("{:.0}%", wr_val * 100.0)).style(Style::default().fg(wr_color(wr_val)))
     } else {
         Cell::from("—")
     };
@@ -195,16 +196,14 @@ fn build_player_row<'a>(
     // ── K/D cell ───────────────────────────────────────────────────────────
     let kd_val = player.stats.kd_ratio;
     let kd_cell = if cfg.show_kd {
-        Cell::from(format!("{:.2}", kd_val))
-            .style(Style::default().fg(kd_color(kd_val)))
+        Cell::from(format!("{:.2}", kd_val)).style(Style::default().fg(kd_color(kd_val)))
     } else {
         Cell::from("—")
     };
 
     // ── Level cell ────────────────────────────────────────────────────────
     let lvl_cell = if cfg.show_level && !player.hide_account_level {
-        Cell::from(player.account_level.to_string())
-            .style(Style::default().fg(DIM_COLOR))
+        Cell::from(player.account_level.to_string()).style(Style::default().fg(DIM_COLOR))
     } else {
         Cell::from("—").style(Style::default().fg(DIM_COLOR))
     };

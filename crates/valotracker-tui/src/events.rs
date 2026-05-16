@@ -21,9 +21,18 @@ pub async fn handle_events(app: &mut App) -> Result<bool> {
 
     let quit = match &app.view.clone() {
         View::Match => handle_match_keys(app, key.code).await,
-        View::History => { handle_history_keys(app, key.code); false }
-        View::Encounter { .. } => { handle_encounter_keys(app, key.code); false }
-        View::Config => { handle_config_keys(app, key.code); false }
+        View::History => {
+            handle_history_keys(app, key.code);
+            false
+        }
+        View::Encounter { .. } => {
+            handle_encounter_keys(app, key.code);
+            false
+        }
+        View::Config => {
+            handle_config_keys(app, key.code);
+            false
+        }
     };
 
     Ok(quit)
@@ -33,13 +42,21 @@ async fn handle_match_keys(app: &mut App, code: KeyCode) -> bool {
     match code {
         KeyCode::Char('q') | KeyCode::Esc => return true,
 
-        KeyCode::Char('r') => { app.refresh().await; }
+        KeyCode::Char('r') => {
+            app.refresh().await;
+        }
 
-        KeyCode::Char('s') => { app.save_current_match().await; }
+        KeyCode::Char('s') => {
+            app.save_current_match().await;
+        }
 
-        KeyCode::Char('h') => { app.open_history(); }
+        KeyCode::Char('h') => {
+            app.open_history();
+        }
 
-        KeyCode::Char('c') => { app.view = View::Config; }
+        KeyCode::Char('c') => {
+            app.view = View::Config;
+        }
 
         KeyCode::Char('t') => {
             app.config.display.show_streamer_tag = !app.config.display.show_streamer_tag;
@@ -81,7 +98,12 @@ fn handle_history_keys(app: &mut App, code: KeyCode) {
     match code {
         KeyCode::Esc | KeyCode::Char('q') => app.go_back(),
         KeyCode::Down | KeyCode::Char('j') => {
-            let max = app.history.as_ref().map(|h| h.len()).unwrap_or(0).saturating_sub(1);
+            let max = app
+                .history
+                .as_ref()
+                .map(|h| h.len())
+                .unwrap_or(0)
+                .saturating_sub(1);
             app.history_selected = (app.history_selected + 1).min(max);
         }
         KeyCode::Up | KeyCode::Char('k') => {

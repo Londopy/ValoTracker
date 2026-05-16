@@ -33,34 +33,34 @@ pub struct PlayerRank {
 /// Map a tier index (0-27) to a human-readable name.
 pub fn tier_to_name(tier: u8) -> &'static str {
     const NAMES: &[&str] = &[
-        "Unranked",   // 0
-        "Unknown",    // 1
-        "Unknown",    // 2
-        "Iron 1",     // 3
-        "Iron 2",     // 4
-        "Iron 3",     // 5
-        "Bronze 1",   // 6
-        "Bronze 2",   // 7
-        "Bronze 3",   // 8
-        "Silver 1",   // 9
-        "Silver 2",   // 10
-        "Silver 3",   // 11
-        "Gold 1",     // 12
-        "Gold 2",     // 13
-        "Gold 3",     // 14
-        "Platinum 1", // 15
-        "Platinum 2", // 16
-        "Platinum 3", // 17
-        "Diamond 1",  // 18
-        "Diamond 2",  // 19
-        "Diamond 3",  // 20
-        "Ascendant 1",// 21
-        "Ascendant 2",// 22
-        "Ascendant 3",// 23
-        "Immortal 1", // 24
-        "Immortal 2", // 25
-        "Immortal 3", // 26
-        "Radiant",    // 27
+        "Unranked",    // 0
+        "Unknown",     // 1
+        "Unknown",     // 2
+        "Iron 1",      // 3
+        "Iron 2",      // 4
+        "Iron 3",      // 5
+        "Bronze 1",    // 6
+        "Bronze 2",    // 7
+        "Bronze 3",    // 8
+        "Silver 1",    // 9
+        "Silver 2",    // 10
+        "Silver 3",    // 11
+        "Gold 1",      // 12
+        "Gold 2",      // 13
+        "Gold 3",      // 14
+        "Platinum 1",  // 15
+        "Platinum 2",  // 16
+        "Platinum 3",  // 17
+        "Diamond 1",   // 18
+        "Diamond 2",   // 19
+        "Diamond 3",   // 20
+        "Ascendant 1", // 21
+        "Ascendant 2", // 22
+        "Ascendant 3", // 23
+        "Immortal 1",  // 24
+        "Immortal 2",  // 25
+        "Immortal 3",  // 26
+        "Radiant",     // 27
     ];
     NAMES.get(tier as usize).copied().unwrap_or("Unknown")
 }
@@ -68,16 +68,8 @@ pub fn tier_to_name(tier: u8) -> &'static str {
 /// Short form: "D2", "Imm1", "Rad" etc.
 pub fn tier_to_short(tier: u8) -> &'static str {
     const SHORT: &[&str] = &[
-        "—", "?", "?",
-        "I1", "I2", "I3",
-        "B1", "B2", "B3",
-        "S1", "S2", "S3",
-        "G1", "G2", "G3",
-        "P1", "P2", "P3",
-        "D1", "D2", "D3",
-        "A1", "A2", "A3",
-        "Im1", "Im2", "Im3",
-        "Rad",
+        "—", "?", "?", "I1", "I2", "I3", "B1", "B2", "B3", "S1", "S2", "S3", "G1", "G2", "G3",
+        "P1", "P2", "P3", "D1", "D2", "D3", "A1", "A2", "A3", "Im1", "Im2", "Im3", "Rad",
     ];
     SHORT.get(tier as usize).copied().unwrap_or("?")
 }
@@ -85,17 +77,17 @@ pub fn tier_to_short(tier: u8) -> &'static str {
 /// RGB color for a rank tier.
 pub fn tier_to_color(tier: u8) -> (u8, u8, u8) {
     match tier {
-        0..=2  => (150, 150, 150), // Unranked — grey
-        3..=5  => (90, 70, 55),    // Iron — dark brown
-        6..=8  => (160, 105, 60),  // Bronze
-        9..=11 => (180, 180, 180), // Silver
-        12..=14 => (210, 175, 50), // Gold
-        15..=17 => (70, 180, 180), // Platinum — teal
+        0..=2 => (150, 150, 150),   // Unranked — grey
+        3..=5 => (90, 70, 55),      // Iron — dark brown
+        6..=8 => (160, 105, 60),    // Bronze
+        9..=11 => (180, 180, 180),  // Silver
+        12..=14 => (210, 175, 50),  // Gold
+        15..=17 => (70, 180, 180),  // Platinum — teal
         18..=20 => (100, 150, 240), // Diamond — blue
         21..=23 => (100, 210, 140), // Ascendant — green
-        24..=26 => (220, 80, 80),  // Immortal — red
-        27      => (255, 215, 0),  // Radiant — gold
-        _       => (150, 150, 150),
+        24..=26 => (220, 80, 80),   // Immortal — red
+        27 => (255, 215, 0),        // Radiant — gold
+        _ => (150, 150, 150),
     }
 }
 
@@ -186,7 +178,13 @@ pub async fn get_player_rank(
 
     let (tier, rr, leaderboard_rank) = mmr
         .latest_competitive_update
-        .map(|u| (u.tier_after_update, u.rr_after_update, u.leaderboard_ranked.unwrap_or(0)))
+        .map(|u| {
+            (
+                u.tier_after_update,
+                u.rr_after_update,
+                u.leaderboard_ranked.unwrap_or(0),
+            )
+        })
         .unwrap_or((0, 0, 0));
 
     // Find peak rank across all seasons
@@ -207,10 +205,10 @@ pub async fn get_player_rank(
     })
 }
 
-fn find_peak_rank(
-    seasonal: &Option<HashMap<String, SeasonalInfo>>,
-) -> (u8, u8, u8) {
-    let Some(map) = seasonal else { return (0, 0, 0) };
+fn find_peak_rank(seasonal: &Option<HashMap<String, SeasonalInfo>>) -> (u8, u8, u8) {
+    let Some(map) = seasonal else {
+        return (0, 0, 0);
+    };
 
     let best = map.values().max_by_key(|s| s.competitive_tier);
     match best {
@@ -224,9 +222,7 @@ fn find_peak_rank(
     }
 }
 
-fn current_season_stats(
-    seasonal: &Option<HashMap<String, SeasonalInfo>>,
-) -> (f32, u32) {
+fn current_season_stats(seasonal: &Option<HashMap<String, SeasonalInfo>>) -> (f32, u32) {
     let Some(map) = seasonal else { return (0.0, 0) };
 
     // Use the season with the most recent (highest) competitive tier as "current"

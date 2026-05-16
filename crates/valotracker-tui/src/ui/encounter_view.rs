@@ -100,9 +100,12 @@ fn draw_table(frame: &mut Frame, area: Rect, encounters: &[PlayerEncounter]) {
                 Cell::from(date_str).style(Style::default().fg(Color::DarkGray)),
                 Cell::from(e.map.clone()),
                 Cell::from(e.agent.clone()).style(Style::default().fg(Color::Rgb(200, 200, 200))),
-                Cell::from(e.kills.to_string()).style(Style::default().fg(Color::Rgb(80, 220, 100))),
-                Cell::from(e.deaths.to_string()).style(Style::default().fg(Color::Rgb(220, 80, 80))),
-                Cell::from(e.assists.to_string()).style(Style::default().fg(Color::Rgb(200, 200, 100))),
+                Cell::from(e.kills.to_string())
+                    .style(Style::default().fg(Color::Rgb(80, 220, 100))),
+                Cell::from(e.deaths.to_string())
+                    .style(Style::default().fg(Color::Rgb(220, 80, 80))),
+                Cell::from(e.assists.to_string())
+                    .style(Style::default().fg(Color::Rgb(200, 200, 100))),
                 Cell::from(wl).style(Style::default().fg(wl_color)),
             ])
         })

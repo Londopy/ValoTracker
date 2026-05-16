@@ -132,9 +132,7 @@ pub async fn get_player_stats(
         comp_updates.iter().map(|m| m.rr_earned as f32).sum::<f32>() / comp_updates.len() as f32
     };
 
-    let afk_penalty = comp_updates
-        .iter()
-        .any(|m| m.afk_penalty.unwrap_or(0) < 0);
+    let afk_penalty = comp_updates.iter().any(|m| m.afk_penalty.unwrap_or(0) < 0);
 
     let (headshot_pct, kd_ratio, win_rate) = aggregate_stats(&details);
 
