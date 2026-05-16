@@ -75,4 +75,3 @@ pub const PARTY_ENEMY_COLOR: Color = Color::Rgb(240, 80, 80);
 pub const SEPARATOR_COLOR: Color = Color::DarkGray;
 pub const HEADER_COLOR: Color = Color::Rgb(180, 180, 180);
 pub const DIM_COLOR: Color = Color::DarkGray;
- = Color::DarkGray;

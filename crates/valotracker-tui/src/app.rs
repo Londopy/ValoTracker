@@ -200,7 +200,3 @@ impl App {
         allies
     }
 }
-   allies.extend(enemies);
-        allies
-    }
-}
