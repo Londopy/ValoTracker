@@ -1,0 +1,17 @@
+[package]
+name = "valotracker-tui"
+version = "1.0.0"
+edition = "2021"
+description = "Valorant match tracker - ratatui TUI"
+
+[[bin]]
+name = "valotracker"
+path = "src/main.rs"
+
+[dependencies]
+valotracker-core            = { path = "../valotracker-core" }
+ratatui            = "0.28"
+crossterm          = "0.28"
+tokio              = { workspace = true }
+anyhow             = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/vt-core",
-    "crates/vt-tui",
-    "crates/vt-gui",
-    "crates/vt-py",
+    "crates/valotracker-core",
+    "crates/valotracker-tui",
+    "crates/valotracker-gui",
+    "crates/valotracker-py",
 ]
 
 [workspace.dependencies]

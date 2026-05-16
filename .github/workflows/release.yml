@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-tui:
-    name: Build vt.exe (TUI)
+    name: Build ValoTracker.exe (TUI)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,39 +28,14 @@ jobs:
           key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build TUI release binary
-        run: cargo build -p vt-tui --release
+        run: cargo build -p valotracker-tui --release
 
       - name: Build GUI release binary
-        run: cargo build -p vt-gui --release --features gui
+        run: cargo build -p valotracker-gui --release --features gui
 
       - name: Upload binaries to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/release/vt.exe
-            target/release/vt-gui.exe
-
-  publish-pypi:
-    name: Build & Publish Python wheel
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install maturin
-        run: pip install maturin
-
-      - name: Build wheel
-        working-directory: crates/vt-py
-        run: maturin build --release
-
-      - name: Publish to PyPI
-        working-directory: crates/vt-py
-        run: maturin publish --username __token__ --password ${{ secrets.PYPI_TOKEN }}
+            target/release/valotracker.exe
+            target/release/valotracker-gui.exe
