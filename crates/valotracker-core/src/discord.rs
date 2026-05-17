@@ -7,9 +7,8 @@
 //!   the Discord IPC client. The main thread submits [`PresenceUpdate`]
 //!   messages over a `std::sync::mpsc` channel.
 //! * If Discord is not running the IPC connection attempt fails silently —
-//!   no error is surfaced to the user.
-//! * The worker reconnects automatically when the channel's sender sends any
-//!   message after a disconnection (the loop retries connect on each update).
+//!   no error is surfaced to the user. `discord-presence` 3.x manages
+//!   reconnection internally, so we create the client once and let it retry.
 //! * Clear the presence by sending [`PresenceUpdate::Clear`].
 //!
 //! # Usage
@@ -29,7 +28,6 @@
 //! ```
 
 use std::sync::mpsc;
-use std::time::Duration;
 
 use tracing::{debug, warn};
 
@@ -67,8 +65,8 @@ impl DiscordRpc {
     /// Spawn the Discord RPC worker thread for `app_id`.
     ///
     /// Returns immediately; the worker connects to Discord asynchronously.
-    /// If Discord is not running the worker will silently wait for the next
-    /// `send()` call before attempting to reconnect.
+    /// If Discord is not running the worker will silently drop updates until
+    /// the connection is established.
     pub fn start(app_id: &str) -> Self {
         let (tx, rx) = mpsc::channel::<PresenceUpdate>();
         let app_id = app_id.to_owned();
@@ -109,75 +107,46 @@ fn worker(app_id: String, rx: mpsc::Receiver<PresenceUpdate>) {
         }
     };
 
-    let mut client: Option<discord_presence::Client> = None;
+    // Create the client and start its internal connection thread.
+    // discord-presence 3.x manages reconnection automatically; if Discord
+    // is not running, activity calls return Err(DiscordError::NotStarted)
+    // which we log at debug level and otherwise ignore.
+    let mut client = discord_presence::Client::new(app_id_u64);
+    client.start();
+    debug!("discord: client started (app_id={})", app_id_u64);
 
     for update in rx {
-        // Attempt (re-)connection if needed
-        if client.is_none() {
-            match try_connect(app_id_u64) {
-                Some(c) => {
-                    debug!("discord: connected (app_id={})", app_id_u64);
-                    client = Some(c);
-                }
-                None => {
-                    // Discord not running — skip this update silently
-                    debug!("discord: connection failed, skipping update");
-                    continue;
-                }
-            }
-        }
-
-        let c = client.as_mut().unwrap();
-
-        let result = match &update {
-            PresenceUpdate::Idle => set_idle(c),
+        let result: discord_presence::Result<()> = match &update {
+            PresenceUpdate::Idle => set_idle(&mut client),
             PresenceUpdate::InMatch {
                 map,
                 mode,
                 party_size,
                 party_max,
                 start_epoch,
-            } => set_in_match(c, map, mode, *party_size, *party_max, *start_epoch),
-            PresenceUpdate::Clear => {
-                let _ = c.clear_activity();
-                Ok(())
-            }
+            } => set_in_match(&mut client, map, mode, *party_size, *party_max, *start_epoch),
+            PresenceUpdate::Clear => client.clear_activity().map(|_| ()),
         };
 
         if let Err(e) = result {
-            warn!("discord: activity update failed: {e}");
-            // Treat any error as a disconnect — reconnect on next update
-            client = None;
+            // NotStarted is the normal case when Discord isn't running yet.
+            debug!("discord: activity update failed: {e}");
         }
     }
 
     // Channel closed — clear presence before exiting
-    if let Some(c) = client.as_mut() {
-        let _ = c.clear_activity();
-    }
-}
-
-// ── Connection helper ─────────────────────────────────────────────────────────
-
-fn try_connect(app_id: u64) -> Option<discord_presence::Client> {
-    let mut client = discord_presence::Client::new(app_id);
-    // Attempt to connect; time out quickly so we don't stall startup
-    match client.start() {
-        Ok(_) => Some(client),
-        Err(e) => {
-            debug!("discord: connect error: {e}");
-            None
-        }
-    }
+    let _ = client.clear_activity();
 }
 
 // ── Activity builders ─────────────────────────────────────────────────────────
 
-fn set_idle(client: &mut discord_presence::Client) -> Result<(), discord_presence::Error> {
-    client.set_activity(|a| {
-        a.state("Idle — Waiting for VALORANT")
-            .assets(|ast| ast.large_image("valotracker_logo").large_text("ValoTracker"))
-    })
+fn set_idle(client: &mut discord_presence::Client) -> discord_presence::Result<()> {
+    client
+        .set_activity(|a| {
+            a.state("Idle — Waiting for VALORANT")
+                .assets(|ast| ast.large_image("valotracker_logo").large_text("ValoTracker"))
+        })
+        .map(|_| ())
 }
 
 fn set_in_match(
@@ -187,26 +156,31 @@ fn set_in_match(
     party_size: u8,
     party_max: u8,
     start_epoch: i64,
-) -> Result<(), discord_presence::Error> {
-    client.set_activity(|a| {
-        let a = a
-            .state("In Match")
-            .details(format!("{} — {}", map, mode))
-            .assets(|ast| ast.large_image("valotracker_logo").large_text("ValoTracker"));
+) -> discord_presence::Result<()> {
+    client
+        .set_activity(|a| {
+            let a = a
+                .state("In Match")
+                .details(format!("{map} — {mode}"))
+                .assets(|ast| ast.large_image("valotracker_logo").large_text("ValoTracker"));
 
-        let a = if start_epoch > 0 {
-            a.timestamps(|ts| ts.start(start_epoch))
-        } else {
-            a
-        };
+            // Only include timestamps when a real start time was provided.
+            let a = if start_epoch > 0 {
+                a.timestamps(|ts| ts.start(start_epoch as u64))
+            } else {
+                a
+            };
 
-        if party_size >= 2 {
-            a.party(|p| {
-                p.id("vt_party")
-                    .size([party_size as i32, party_max as i32])
-            })
-        } else {
-            a
-        }
-    })
+            // Only show party info for premades (2+ players).
+            // discord-presence 3.x uses a (u32, u32) tuple for party size.
+            if party_size >= 2 {
+                a.party(|p| {
+                    p.id(String::from("vt_party"))
+                        .size((u32::from(party_size), u32::from(party_max)))
+                })
+            } else {
+                a
+            }
+        })
+        .map(|_| ())
 }
