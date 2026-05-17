@@ -51,6 +51,12 @@ pub struct FeaturesConfig {
     /// Flag players who climbed ≥ this many tiers in ≤ smurf_flag_threshold_days.
     pub smurf_flag_threshold_tiers: u8,
     pub smurf_flag_threshold_days: u32,
+    /// Minimize to the system tray instead of closing the window (GUI only).
+    #[serde(default)]
+    pub minimize_to_tray: bool,
+    /// Add ValoTracker to the Windows startup registry so it launches at login (GUI only).
+    #[serde(default)]
+    pub run_on_startup: bool,
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -88,6 +94,8 @@ impl Default for FeaturesConfig {
             gui: false,
             smurf_flag_threshold_tiers: 8,
             smurf_flag_threshold_days: 30,
+            minimize_to_tray: false,
+            run_on_startup: false,
         }
     }
 }

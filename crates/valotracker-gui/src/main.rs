@@ -13,16 +13,22 @@ fn main() {
 mod app;
 #[cfg(feature = "gui")]
 mod colors;
+#[cfg(feature = "gui")]
+mod startup;
 
 #[cfg(feature = "gui")]
 fn run() {
     use eframe::egui;
 
+    // Launched from the Windows startup registry entry → start hidden in tray
+    let start_minimized = std::env::args().any(|a| a == "--minimized");
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("ValoTracker — Valorant Tracker")
             .with_inner_size([1300.0, 740.0])
-            .with_min_inner_size([900.0, 500.0]),
+            .with_min_inner_size([900.0, 500.0])
+            .with_visible(!start_minimized),
         ..Default::default()
     };
 

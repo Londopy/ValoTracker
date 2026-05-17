@@ -10,11 +10,13 @@ path = "src/main.rs"
 
 [features]
 default = []
-gui = ["dep:eframe", "dep:egui"]
+gui = ["dep:eframe", "dep:egui", "dep:tray-icon", "dep:winreg"]
 
 [dependencies]
 valotracker-core = { path = "../valotracker-core" }
-tokio   = { workspace = true }
-anyhow  = { workspace = true }
-eframe  = { version = "0.28", optional = true }
-egui    = { version = "0.28", optional = true }
+tokio      = { workspace = true }
+anyhow     = { workspace = true }
+eframe     = { version = "0.28", optional = true }
+egui       = { version = "0.28", optional = true }
+tray-icon  = { version = "0.17", optional = true }
+winreg     = { version = "0.52", optional = true }
