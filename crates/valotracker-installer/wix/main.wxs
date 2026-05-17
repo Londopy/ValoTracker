@@ -31,7 +31,7 @@
     Id="*"
     Name="ValoTracker"
     Language="1033"
-    Version="!(bind.FileVersion.ValoTrackerTuiExe)"
+    Version="$(env.VERSION)"
     Manufacturer="Londopy"
     UpgradeCode="3B4C2D1A-7F6E-4A5B-8C9D-0E1F2A3B4C5D">
 
