@@ -124,7 +124,14 @@ fn worker(app_id: String, rx: mpsc::Receiver<PresenceUpdate>) {
                 party_size,
                 party_max,
                 start_epoch,
-            } => set_in_match(&mut client, map, mode, *party_size, *party_max, *start_epoch),
+            } => set_in_match(
+                &mut client,
+                map,
+                mode,
+                *party_size,
+                *party_max,
+                *start_epoch,
+            ),
             PresenceUpdate::Clear => client.clear_activity().map(|_| ()),
         };
 
@@ -143,8 +150,10 @@ fn worker(app_id: String, rx: mpsc::Receiver<PresenceUpdate>) {
 fn set_idle(client: &mut discord_presence::Client) -> discord_presence::Result<()> {
     client
         .set_activity(|a| {
-            a.state("Idle — Waiting for VALORANT")
-                .assets(|ast| ast.large_image("valotracker_logo").large_text("ValoTracker"))
+            a.state("Idle — Waiting for VALORANT").assets(|ast| {
+                ast.large_image("valotracker_logo")
+                    .large_text("ValoTracker")
+            })
         })
         .map(|_| ())
 }
@@ -162,7 +171,10 @@ fn set_in_match(
             let a = a
                 .state("In Match")
                 .details(format!("{map} — {mode}"))
-                .assets(|ast| ast.large_image("valotracker_logo").large_text("ValoTracker"));
+                .assets(|ast| {
+                    ast.large_image("valotracker_logo")
+                        .large_text("ValoTracker")
+                });
 
             // Only include timestamps when a real start time was provided.
             let a = if start_epoch > 0 {

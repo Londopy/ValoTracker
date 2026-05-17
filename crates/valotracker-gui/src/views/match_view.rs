@@ -58,8 +58,8 @@ pub fn draw_match_view(
                 .show(ui, |ui| {
                     // ── Column headers ────────────────────────────────────────
                     for (i, h) in [
-                        "PTY", "AGENT", "NAME", "RANK", "RR", "PEAK", "HS%", "WR%", "K/D",
-                        "LVL", "ΔRR", "MET",
+                        "PTY", "AGENT", "NAME", "RANK", "RR", "PEAK", "HS%", "WR%", "K/D", "LVL",
+                        "ΔRR", "MET",
                     ]
                     .iter()
                     .enumerate()
@@ -139,8 +139,7 @@ fn draw_player_row(
     ui.add_sized(
         [w[1], 20.0],
         egui::Label::new(
-            egui::RichText::new(&player.agent_name)
-                .color(egui::Color32::from_rgb(200, 200, 200)),
+            egui::RichText::new(&player.agent_name).color(egui::Color32::from_rgb(200, 200, 200)),
         ),
     );
 
@@ -230,7 +229,11 @@ fn draw_player_row(
     };
     ui.add_sized(
         [w[6], 20.0],
-        egui::Label::new(egui::RichText::new(hs_str).monospace().color(colors::hs_color(hs))),
+        egui::Label::new(
+            egui::RichText::new(hs_str)
+                .monospace()
+                .color(colors::hs_color(hs)),
+        ),
     );
 
     // ── WR% ───────────────────────────────────────────────────────────────
@@ -242,7 +245,11 @@ fn draw_player_row(
     };
     ui.add_sized(
         [w[7], 20.0],
-        egui::Label::new(egui::RichText::new(wr_str).monospace().color(colors::wr_color(wr))),
+        egui::Label::new(
+            egui::RichText::new(wr_str)
+                .monospace()
+                .color(colors::wr_color(wr)),
+        ),
     );
 
     // ── K/D ───────────────────────────────────────────────────────────────
@@ -254,7 +261,11 @@ fn draw_player_row(
     };
     ui.add_sized(
         [w[8], 20.0],
-        egui::Label::new(egui::RichText::new(kd_str).monospace().color(colors::kd_color(kd))),
+        egui::Label::new(
+            egui::RichText::new(kd_str)
+                .monospace()
+                .color(colors::kd_color(kd)),
+        ),
     );
 
     // ── Level ─────────────────────────────────────────────────────────────

@@ -56,14 +56,26 @@ mod tests {
 
     #[test]
     fn known_agents_resolve() {
-        assert_eq!(resolve_agent_name("707eab51-4836-f488-046a-cda6bf494859"), "Viper");
-        assert_eq!(resolve_agent_name("add6443a-41bd-e414-f6ad-e58d267f4e95"), "Jett");
-        assert_eq!(resolve_agent_name("569fdd95-4d10-43ab-ca70-79becc718b46"), "Sage");
+        assert_eq!(
+            resolve_agent_name("707eab51-4836-f488-046a-cda6bf494859"),
+            "Viper"
+        );
+        assert_eq!(
+            resolve_agent_name("add6443a-41bd-e414-f6ad-e58d267f4e95"),
+            "Jett"
+        );
+        assert_eq!(
+            resolve_agent_name("569fdd95-4d10-43ab-ca70-79becc718b46"),
+            "Sage"
+        );
     }
 
     #[test]
     fn unknown_agent_returns_unknown() {
-        assert_eq!(resolve_agent_name("00000000-0000-0000-0000-000000000000"), "Unknown");
+        assert_eq!(
+            resolve_agent_name("00000000-0000-0000-0000-000000000000"),
+            "Unknown"
+        );
     }
 
     #[test]

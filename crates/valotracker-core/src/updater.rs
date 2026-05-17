@@ -113,7 +113,10 @@ fn run_update_check() -> UpdateResult {
         return UpdateResult::UpToDate;
     }
 
-    info!("updater: newer version found: {} → {}", CURRENT_VERSION, tag);
+    info!(
+        "updater: newer version found: {} → {}",
+        CURRENT_VERSION, tag
+    );
 
     // Find the right asset for this binary
     // We look for an asset named exactly "ValoTracker.exe" or "ValoTracker-gui.exe"
@@ -148,7 +151,10 @@ fn run_update_check() -> UpdateResult {
     let download_url = match asset_url {
         Some(u) => u,
         None => {
-            warn!("updater: no matching asset '{}' in release {}", exe_name, tag);
+            warn!(
+                "updater: no matching asset '{}' in release {}",
+                exe_name, tag
+            );
             return UpdateResult::Skipped;
         }
     };
@@ -166,13 +172,16 @@ fn run_update_check() -> UpdateResult {
         .and_then(|r| r.text())
         .ok()
         .and_then(|text| {
-            text.lines()
-                .find_map(|line| {
-                    let mut parts = line.splitn(2, "  ");
-                    let hash = parts.next()?.trim().to_owned();
-                    let name = parts.next()?.trim();
-                    if name.eq_ignore_ascii_case(exe_name) { Some(hash) } else { None }
-                })
+            text.lines().find_map(|line| {
+                let mut parts = line.splitn(2, "  ");
+                let hash = parts.next()?.trim().to_owned();
+                let name = parts.next()?.trim();
+                if name.eq_ignore_ascii_case(exe_name) {
+                    Some(hash)
+                } else {
+                    None
+                }
+            })
         });
 
     if expected_hash.is_none() {
@@ -236,14 +245,16 @@ fn replace_binary(
     src: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_DELAY_UNTIL_REBOOT,
-    };
+    use windows_sys::Win32::Storage::FileSystem::{MoveFileExW, MOVEFILE_DELAY_UNTIL_REBOOT};
 
     // Schedule old binary for deletion at next reboot.
     // lpNewFileName must be a true null pointer (not a pointer to a null
     // terminator) when using MOVEFILE_DELAY_UNTIL_REBOOT for deletion.
-    let dest_wide: Vec<u16> = dest.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let dest_wide: Vec<u16> = dest
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
 
     // BOOL return: 0 = failure, non-zero = success.
     // Failure is non-fatal — we still attempt the copy; the old binary simply

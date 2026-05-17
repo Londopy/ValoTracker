@@ -144,7 +144,15 @@ impl Engine {
         let players: Vec<ResolvedPlayer> = raw_players
             .iter()
             .map(|raw| {
-                assemble_player(raw, &my_team, &names, &ranks, &player_stats, &party_map_mut, &party_icons)
+                assemble_player(
+                    raw,
+                    &my_team,
+                    &names,
+                    &ranks,
+                    &player_stats,
+                    &party_map_mut,
+                    &party_icons,
+                )
             })
             .collect();
 

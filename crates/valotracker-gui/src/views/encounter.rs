@@ -111,9 +111,7 @@ pub fn draw_encounter_panel(
                         let side = if enc.was_enemy { "⚔" } else { "✦" };
 
                         ui.label(egui::RichText::new(&date_str).color(colors::DIM).small());
-                        ui.label(
-                            egui::RichText::new(format!("{} {}", &enc.map, side)).small(),
-                        );
+                        ui.label(egui::RichText::new(format!("{} {}", &enc.map, side)).small());
                         ui.label(egui::RichText::new(&enc.agent).small());
                         ui.label(
                             egui::RichText::new(enc.kills.to_string())

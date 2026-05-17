@@ -4,7 +4,10 @@ use std::time::Instant;
 
 use eframe::egui;
 
-use crate::{app::{BgState, Tab}, colors};
+use crate::{
+    app::{BgState, Tab},
+    colors,
+};
 
 /// Draw the horizontal top bar: logo, match info, tab selector, and action buttons.
 pub fn draw_topbar(
@@ -91,11 +94,7 @@ pub fn draw_topbar(
 }
 
 /// Draw the slim status bar at the bottom of the window.
-pub fn draw_statusbar(
-    ui: &mut egui::Ui,
-    bg: &BgState,
-    status_msg: &Option<(String, Instant)>,
-) {
+pub fn draw_statusbar(ui: &mut egui::Ui, bg: &BgState, status_msg: &Option<(String, Instant)>) {
     ui.horizontal(|ui| {
         if let Some((msg, _)) = status_msg {
             ui.label(
@@ -105,11 +104,9 @@ pub fn draw_statusbar(
             );
         } else {
             ui.label(
-                egui::RichText::new(
-                    "[⟳] Refresh   [💾] Save   [📋] History   [Esc] Close panel",
-                )
-                .color(colors::DIM)
-                .small(),
+                egui::RichText::new("[⟳] Refresh   [💾] Save   [📋] History   [Esc] Close panel")
+                    .color(colors::DIM)
+                    .small(),
             );
         }
 
