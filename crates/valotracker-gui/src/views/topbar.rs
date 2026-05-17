@@ -39,8 +39,7 @@ pub fn draw_topbar(
             if !snap.server.is_empty() {
                 ui.separator();
                 ui.label(
-                    egui::RichText::new(&snap.server)
-                        .color(egui::Color32::from_rgb(130, 130, 150)),
+                    egui::RichText::new(&snap.server).color(egui::Color32::from_rgb(130, 130, 150)),
                 );
             }
         } else if bg.loading {
