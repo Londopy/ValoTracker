@@ -1,6 +1,6 @@
 [package]
 name = "valotracker-gui"
-version = "1.0.1"
+version = "3.0.0"
 edition = "2021"
 description = "Valorant match tracker - egui desktop GUI"
 
@@ -16,9 +16,11 @@ gui = ["dep:eframe", "dep:egui", "dep:tray-icon", "dep:winreg"]
 winresource = "0.1"
 
 [dependencies]
-valotracker-core = { path = "../valotracker-core" }
+valotracker-core = { path = "../valotracker-core", features = ["discord"] }
 tokio      = { workspace = true }
 anyhow     = { workspace = true }
+tracing    = { workspace = true }
+chrono     = { version = "0.4", features = ["clock"] }
 eframe     = { version = "0.28", optional = true }
 egui       = { version = "0.28", optional = true }
 tray-icon  = { version = "0.17", optional = true }

@@ -113,8 +113,8 @@ fn handle_history_keys(app: &mut App, code: KeyCode) {
             if let Some(history) = &app.history {
                 if let Some(m) = history.get(app.history_selected) {
                     let id = m.id.clone();
-                    if let Ok(db) = valotracker_core::history::MatchHistory::open() {
-                        let _ = db.delete_match(&id);
+                    if let Some(db_arc) = &app.history_db {
+                        let _ = db_arc.lock().unwrap().delete_match(&id);
                     }
                     app.open_history();
                 }

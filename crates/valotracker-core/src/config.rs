@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
@@ -44,8 +45,11 @@ pub struct WeaponConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FeaturesConfig {
-    /// Discord Rich Presence integration (Phase 3).
+    /// Discord Rich Presence integration.
     pub discord_rpc: bool,
+    /// Discord application ID (read from config so users can substitute their own).
+    #[serde(default = "default_discord_app_id")]
+    pub discord_app_id: String,
     /// Launch the egui GUI instead of the TUI.
     pub gui: bool,
     /// Flag players who climbed ≥ this many tiers in ≤ smurf_flag_threshold_days.
@@ -57,6 +61,29 @@ pub struct FeaturesConfig {
     /// Add ValoTracker to the Windows startup registry so it launches at login (GUI only).
     #[serde(default)]
     pub run_on_startup: bool,
+    /// Check for updates in the background on startup. Set to false to opt out.
+    #[serde(default = "default_true")]
+    pub check_updates: bool,
+    /// Send Windows desktop toast notifications for key events. Set to false to opt out.
+    #[serde(default = "default_true")]
+    pub notifications: bool,
+    /// Unix timestamp (seconds) of the last successful update check.
+    /// Used to throttle checks to once per 24 hours.
+    #[serde(default)]
+    pub last_update_checked: u64,
+}
+
+fn default_true() -> bool { true }
+
+/// The official ValoTracker Discord application ID.
+///
+/// Register your own at https://discord.com/developers/applications if you
+/// want to customise the presence (different assets, name, etc.).
+/// Leave this as the default to use the bundled ValoTracker app.
+const VALOTRACKER_DISCORD_APP_ID: &str = "1505656422631866480";
+
+fn default_discord_app_id() -> String {
+    VALOTRACKER_DISCORD_APP_ID.to_owned()
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -91,12 +118,38 @@ impl Default for FeaturesConfig {
     fn default() -> Self {
         Self {
             discord_rpc: false,
+            discord_app_id: String::new(),
             gui: false,
             smurf_flag_threshold_tiers: 8,
             smurf_flag_threshold_days: 30,
             minimize_to_tray: false,
             run_on_startup: false,
+            check_updates: true,
+            notifications: true,
+            last_update_checked: 0,
         }
+    }
+}
+
+impl Config {
+    /// Returns the current Unix timestamp in seconds.
+    pub fn now_unix() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    }
+
+    /// Returns `true` if the last update check was more than 24 hours ago (or never).
+    pub fn update_check_due(&self) -> bool {
+        let elapsed = Self::now_unix().saturating_sub(self.features.last_update_checked);
+        elapsed >= 86_400
+    }
+
+    /// Stamp `last_update_checked` with now and persist to disk.
+    pub fn mark_update_checked(&mut self) {
+        self.features.last_update_checked = Self::now_unix();
+        let _ = self.save();
     }
 }
 

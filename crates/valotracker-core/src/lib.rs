@@ -19,22 +19,27 @@
 //! The `engine` module orchestrates all of the above into a single
 //! `MatchSnapshot` value that the UI crates consume.
 
+pub mod agents;
 pub mod auth;
 pub mod client;
 pub mod config;
 pub mod coregame;
+#[cfg(feature = "discord")]
+pub mod discord;
 pub mod engine;
 pub mod error;
 pub mod history;
 pub mod lockfile;
 pub mod models;
 pub mod names;
+pub mod notifications;
 pub mod party;
 pub mod pregame;
 pub mod presence;
 pub mod rank;
 pub mod state;
 pub mod stats;
+pub mod updater;
 pub mod websocket;
 
 // Convenient re-exports for UI crates

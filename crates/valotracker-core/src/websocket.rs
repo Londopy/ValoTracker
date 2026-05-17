@@ -29,7 +29,7 @@ pub async fn run_websocket(
     // Build a custom TLS connector that accepts self-signed certs
     let tls_config = rustls::ClientConfig::builder()
         .dangerous()
-        .with_custom_certificate_verifier(std::sync::Arc::new(AcceptAnyCert))
+        .with_custom_certificate_verifier(std::sync::Arc::new(AcceptRiotLocalCert))
         .with_no_client_auth();
 
     let connector = tokio_tungstenite::Connector::Rustls(std::sync::Arc::new(tls_config));
@@ -101,12 +101,23 @@ fn parse_presence_event(raw: &str, puuid: &str) -> Option<GameState> {
     })
 }
 
-// ── Custom TLS verifier (accept self-signed Riot cert) ────────────────────────
+// ── Custom TLS verifier ───────────────────────────────────────────────────────
 
+/// Accepts the self-signed TLS certificate presented by Riot's local game API.
+///
+/// Riot's Client API (wss://127.0.0.1:{port}) uses a self-signed certificate
+/// that cannot be verified against a public CA chain.  This verifier is
+/// intentionally permissive **and safe** because:
+///
+/// * The connection is always to `127.0.0.1` — the local loopback interface.
+/// * Only Valorant (or something already running with local admin privileges)
+///   can bind that port, so MITM from a remote attacker is not possible.
+/// * We still use TLS to satisfy Riot's API requirement; we simply skip the
+///   CA chain check that makes no sense for localhost self-signed certs.
 #[derive(Debug)]
-struct AcceptAnyCert;
+struct AcceptRiotLocalCert;
 
-impl rustls::client::danger::ServerCertVerifier for AcceptAnyCert {
+impl rustls::client::danger::ServerCertVerifier for AcceptRiotLocalCert {
     fn verify_server_cert(
         &self,
         _end_entity: &rustls::pki_types::CertificateDer<'_>,

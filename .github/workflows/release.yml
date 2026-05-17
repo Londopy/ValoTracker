@@ -1,24 +1,39 @@
 name: Release
 
+# Triggered when a version tag is pushed: git push origin v1.2.3
 on:
   push:
     tags:
       - 'v*.*.*'
 
 permissions:
-  contents: write
+  contents: write  # needed to create the GitHub release and commit Scoop update
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build-tui:
-    name: Build ValoTracker.exe (TUI)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 1 — Build all Rust artifacts and the Python wheel
+  # ═══════════════════════════════════════════════════════════════════════════
+  build:
+    name: Build & Package
     runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
 
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so git log works in release body
+
+      # ── Rust toolchain ───────────────────────────────────────────────────────
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
-      - name: Cache cargo
+      # ── Cargo cache ──────────────────────────────────────────────────────────
+      - name: Cache cargo registry + target
         uses: actions/cache@v4
         with:
           path: |
@@ -26,26 +41,176 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-release-
 
-      - name: Build TUI release binary
-        run: cargo build -p valotracker-tui --release
-
-      - name: Build GUI release binary
-        run: cargo build -p valotracker-gui --release --features gui
-
-      - name: Build installer
+      # ── Extract version from tag ──────────────────────────────────────────────
+      - name: Set version env var
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
+          $ver = "${{ github.ref_name }}".TrimStart('v')
+          echo "VERSION=$ver" >> $env:GITHUB_ENV
+
+      # ── Build TUI binary ─────────────────────────────────────────────────────
+      - name: Build ValoTracker.exe (TUI)
+        run: cargo build -p valotracker-tui --release
+
+      # ── Build GUI binary ─────────────────────────────────────────────────────
+      - name: Build ValoTracker-gui.exe (GUI)
+        run: cargo build -p valotracker-gui --release --features gui
+
+      # ── Build Inno Setup installer ────────────────────────────────────────────
+      - name: Build Inno Setup installer (.exe)
+        shell: pwsh
+        run: |
           $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            Write-Host "Installing Inno Setup 6..."
+            choco install innosetup --yes --no-progress | Out-Null
+          }
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          & $iscc /DAppVersion=$version installer\ValoTracker.iss
+          & $iscc /DAppVersion=$env:VERSION installer\ValoTracker.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Upload binaries and installer to release
+      # ── Install cargo-wix + WiX Toolset ──────────────────────────────────────
+      - name: Install cargo-wix
+        run: cargo install cargo-wix --locked
+
+      - name: Install WiX Toolset v3
+        shell: pwsh
+        run: |
+          choco install wixtoolset --yes --no-progress | Out-Null
+          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          echo "$wixPath" >> $env:GITHUB_PATH
+
+      # ── Build MSI installer ───────────────────────────────────────────────────
+      - name: Build MSI (cargo-wix)
+        shell: pwsh
+        env:
+          # Pass pre-built binary paths to the WiX descriptor via variables
+          WixTuiBinPath: ${{ github.workspace }}\target\release\valotracker.exe
+          WixGuiBinPath: ${{ github.workspace }}\target\release\valotracker-gui.exe
+        run: |
+          cargo wix -p valotracker-installer `
+            --no-build `
+            --nocapture `
+            --define TuiBinPath="$env:WixTuiBinPath" `
+            --define GuiBinPath="$env:WixGuiBinPath"
+          # Rename to versioned filename
+          $msi = Get-ChildItem target\wix\*.msi | Select-Object -First 1
+          $dest = "dist\ValoTracker-$env:VERSION-x86_64.msi"
+          Move-Item $msi.FullName $dest -Force
+          echo "MSI_PATH=$dest" >> $env:GITHUB_ENV
+
+      # ── Compute SHA-256 for all artifacts ─────────────────────────────────────
+      - name: Compute SHA-256 checksums
+        shell: pwsh
+        run: |
+          $tui = Get-FileHash "target\release\valotracker.exe"  -Algorithm SHA256
+          $gui = Get-FileHash "target\release\valotracker-gui.exe" -Algorithm SHA256
+          $msi = Get-FileHash "dist\ValoTracker-$env:VERSION-x86_64.msi" -Algorithm SHA256
+
+          echo "SHA_TUI=$($tui.Hash.ToLower())" >> $env:GITHUB_ENV
+          echo "SHA_GUI=$($gui.Hash.ToLower())" >> $env:GITHUB_ENV
+          echo "SHA_MSI=$($msi.Hash.ToLower())" >> $env:GITHUB_ENV
+
+          # Write a standalone checksums.txt for Scoop autoupdate
+          @"
+          $($tui.Hash.ToLower())  ValoTracker.exe
+          $($gui.Hash.ToLower())  ValoTracker-gui.exe
+          $($msi.Hash.ToLower())  ValoTracker-$env:VERSION-x86_64.msi
+          "@ | Out-File -FilePath dist\checksums.txt -Encoding utf8
+
+      # ── Copy binaries into the Python wheel bin/ directory ────────────────────
+      - name: Stage binaries for Python wheel
+        shell: pwsh
+        run: |
+          $binDir = "python\valotracker\bin"
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+          Copy-Item "target\release\valotracker.exe"     "$binDir\ValoTracker.exe"
+          Copy-Item "target\release\valotracker-gui.exe" "$binDir\ValoTracker-gui.exe"
+
+      # ── Set up Python ─────────────────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install wheel build tools
+        run: pip install build
+
+      # ── Build the Python wheel ────────────────────────────────────────────────
+      - name: Build Python wheel
+        shell: pwsh
+        run: |
+          cd python
+          # Update version in pyproject.toml to match the tag
+          (Get-Content pyproject.toml) `
+            -replace 'version = ".*"', "version = `"$env:VERSION`"" `
+            | Set-Content pyproject.toml
+          # Build wheel forced to win_amd64
+          pip wheel . --no-deps -w dist/ --plat-name win_amd64
+          $whl = Get-ChildItem dist\*.whl | Select-Object -First 1
+          # Rename to canonical versioned name
+          $canonical = "valotracker-$env:VERSION-py3-none-win_amd64.whl"
+          Move-Item $whl.FullName "dist\$canonical" -Force
+          echo "WHL_PATH=python\dist\$canonical" >> $env:GITHUB_ENV
+
+      # ── Compute SHA-256 for the wheel ─────────────────────────────────────────
+      - name: SHA-256 for wheel
+        shell: pwsh
+        run: |
+          $whl = Get-FileHash "$env:WHL_PATH" -Algorithm SHA256
+          echo "SHA_WHL=$($whl.Hash.ToLower())" >> $env:GITHUB_ENV
+          # Append to checksums.txt
+          Add-Content dist\checksums.txt "$($whl.Hash.ToLower())  valotracker-$env:VERSION-py3-none-win_amd64.whl"
+
+      # ── Build release body from template ──────────────────────────────────────
+      - name: Generate release body
+        shell: pwsh
+        run: |
+          $body = Get-Content .github\release_template.md -Raw
+          $body = $body `
+            -replace '\$VERSION',  $env:VERSION `
+            -replace '\$SHA_TUI',  $env:SHA_TUI `
+            -replace '\$SHA_GUI',  $env:SHA_GUI `
+            -replace '\$SHA_MSI',  $env:SHA_MSI `
+            -replace '\$SHA_WHL',  $env:SHA_WHL
+          Set-Content dist\release_body.md $body -Encoding utf8
+
+      # ── Update Scoop manifest hash ────────────────────────────────────────────
+      - name: Update Scoop manifest
+        shell: pwsh
+        run: |
+          $manifest = Get-Content scoop\valotracker.json -Raw | ConvertFrom-Json
+          $manifest.version = $env:VERSION
+          $manifest.architecture.'64bit'.url = "https://github.com/Londopy/ValoTracker/releases/download/v$env:VERSION/ValoTracker-$env:VERSION-x86_64.msi"
+          $manifest.architecture.'64bit'.hash = $env:SHA_MSI
+          $manifest | ConvertTo-Json -Depth 10 | Set-Content scoop\valotracker.json -Encoding utf8
+
+      # ── Commit Scoop manifest update ──────────────────────────────────────────
+      - name: Commit Scoop manifest
+        shell: pwsh
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scoop/valotracker.json
+          # Only commit if there are staged changes
+          $changes = git diff --cached --name-only
+          if ($changes) {
+            git commit -m "chore: update Scoop manifest to v$env:VERSION [skip ci]"
+            git push origin HEAD:main
+          }
+
+      # ── Publish GitHub release with all artifacts ─────────────────────────────
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: dist/release_body.md
           files: |
             target/release/valotracker.exe
             target/release/valotracker-gui.exe
-            dist/ValoTracker-Setup-*.exe
+            dist/ValoTracker-${{ env.VERSION }}-x86_64.msi
+            dist/ValoTracker-Setup-${{ env.VERSION }}.exe
+            ${{ env.WHL_PATH }}
+            dist/checksums.txt

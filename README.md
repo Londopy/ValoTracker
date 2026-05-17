@@ -26,7 +26,14 @@ A fast, privacy-first Valorant match tracker written in Rust.
   double-click the tray icon to restore
 - **Run on startup** — optionally launch ValoTracker automatically when Windows
   starts (hidden in tray until needed)
-- **Python bindings** — `pip install ValoTracker` exposes the engine to Python via PyO3
+- **Idle waiting screen** — animated "Waiting for VALORANT…" screen when VALORANT isn't running; automatically transitions to the match view the moment it's detected
+- **Auto-updater** — silent background update check on startup; installs new versions in-place and shows a one-line notification; respects a 24-hour cooldown and an opt-out flag
+- **Windows toast notifications** — desktop notifications for match detection, data loaded, and update complete; opt-out via config
+- **Discord Rich Presence** — shows map, mode, party size, and elapsed time in Discord; opt-in via config
+- **MSI installer** — no-UAC per-user MSI built with cargo-wix, alongside the existing Inno Setup wizard
+- **Scoop bucket** — `scoop install valotracker`
+- **Python CLI launchers** — `valotracker` and `valotracker-gui` console scripts bundled with the wheel
+- **Python bindings** — `pip install valotracker` exposes the engine to Python via PyO3
 
 ---
 
@@ -57,6 +64,21 @@ Prefer a no-install option? Grab `ValoTracker.exe` (TUI) or
 [latest release](https://github.com/Londopy/ValoTracker/releases/latest) and
 drop it anywhere on your `PATH`.
 
+### Scoop
+
+```powershell
+scoop bucket add valotracker https://github.com/Londopy/ValoTracker
+scoop install valotracker
+```
+
+### pip (Python)
+
+```bash
+pip install valotracker
+valotracker        # launches TUI
+valotracker-gui    # launches GUI
+```
+
 ### Build from source
 
 ```powershell
@@ -65,15 +87,38 @@ git clone https://github.com/Londopy/ValoTracker.git
 cd ValoTracker
 
 # TUI (default)
-cargo build --release -p ValoTracker-tui
+cargo build --release -p valotracker-tui
 # Binary: target\release\ValoTracker.exe
 
 # GUI (egui)
-cargo build --release -p ValoTracker-gui --features gui
+cargo build --release -p valotracker-gui --features gui
 # Binary: target\release\ValoTracker-gui.exe
+
+# MSI installer (requires cargo-wix and WiX Toolset v3)
+cargo install cargo-wix
+cargo wix -p valotracker-installer --no-build --nocapture
 ```
 
 **Requirements:** Rust 1.78+, Windows 10/11, VALORANT installed and running.
+
+---
+
+## Security
+
+ValoTracker is open source. You can audit every line of code in this repository.
+
+Each release is scanned by VirusTotal before publishing.
+
+[![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-brightgreen)](VIRUSTOTAL_URL_HERE)
+
+**To update this badge after a new release:**
+1. Go to https://www.virustotal.com
+2. Upload the `.msi` or `.exe` from the latest GitHub release
+3. Copy the results URL from your browser after the scan
+4. Replace `VIRUSTOTAL_URL_HERE` in README.md with that URL
+5. Update the badge color: `brightgreen` = 0 detections · `yellow` = 1–2 (false positives) · `red` = investigate
+
+SHA-256 checksums for every release artifact are published in each [GitHub release](https://github.com/Londopy/ValoTracker/releases/latest).
 
 ---
 
@@ -156,12 +201,15 @@ auto_clear              = true
 preferred = "Vandal"
 
 [features]
-discord_rpc                = false
-gui                        = false
+discord_rpc                = false        # Enable Discord Rich Presence (no setup required)
+discord_app_id             = ""           # Leave blank to use the bundled ValoTracker app; set your own to customise
+gui                        = false        # Launch GUI instead of TUI by default
 smurf_flag_threshold_tiers = 8
 smurf_flag_threshold_days  = 30
-minimize_to_tray           = false
-run_on_startup             = false
+minimize_to_tray           = false        # GUI: minimize to tray on close
+run_on_startup             = false        # Launch at Windows login
+check_updates              = true         # Silent background update check (once per 24 h)
+notifications              = true         # Windows desktop toast notifications
 ```
 
 You can also edit all display toggles live from within the TUI by pressing
@@ -174,12 +222,29 @@ You can also edit all display toggles live from within the TUI by pressing
 ```
 ValoTracker/
 ├── crates/
-│   ├── ValoTracker-core/    # Engine (async Rust, no UI code)
-│   ├── ValoTracker-tui/     # ratatui terminal frontend
-│   ├── ValoTracker-gui/     # egui desktop GUI (--features gui)
-│   └── ValoTracker-py/      # PyO3 Python bindings → PyPI
-└── python/         # Pure-Python package wrapping ValoTracker-py
-    └── ValoTracker/
+│   ├── valotracker-core/       # Engine (async Rust, no UI code)
+│   │   ├── src/updater.rs      # Silent background auto-updater
+│   │   ├── src/notifications.rs# Windows toast notifications
+│   │   └── src/discord.rs      # Discord Rich Presence
+│   ├── valotracker-tui/        # ratatui terminal frontend
+│   ├── valotracker-gui/        # egui desktop GUI (--features gui)
+│   ├── valotracker-py/         # PyO3 Python bindings → PyPI
+│   └── valotracker-installer/  # cargo-wix MSI packaging target
+│       └── wix/main.wxs        # WiX descriptor
+├── installer/
+│   └── ValoTracker.iss         # Inno Setup script (per-user, no UAC)
+├── scoop/
+│   └── valotracker.json        # Scoop manifest with autoupdate
+├── python/                     # Python package (pip install valotracker)
+│   ├── valotracker/
+│   │   ├── launcher.py         # run_tui() / run_gui() console scripts
+│   │   ├── __main__.py         # python -m valotracker
+│   │   └── bin/                # Pre-compiled .exe files (staged by CI)
+│   ├── pyproject.toml
+│   └── MANIFEST.in
+└── .github/
+    ├── workflows/release.yml   # Full CI: build → MSI → wheel → PyPI → release
+    └── release_template.md     # Release body template with SHA-256 table
 ```
 
 ---

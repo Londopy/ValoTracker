@@ -1,0 +1,69 @@
+{
+  "version": "3.0.0",
+  "description": "Privacy-first Valorant match tracker — real-time player ranks, stats, and party info. No login required.",
+  "homepage": "https://github.com/Londopy/ValoTracker",
+  "license": "MIT",
+  "notes": [
+    "Start ValoTracker (terminal):  valotracker",
+    "Start ValoTracker (GUI):       valotracker-gui",
+    "VALORANT must be running for live tracking to work."
+  ],
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/Londopy/ValoTracker/releases/download/v1.0.1/ValoTracker-1.0.1-x86_64.msi",
+      "hash": "PLACEHOLDER_SHA256_MSI"
+    }
+  },
+  "installer": {
+    "script": [
+      "$msi = \"$dir\\ValoTracker.msi\"",
+      "Copy-Item $dir\\*.msi $msi",
+      "Start-Process msiexec.exe -ArgumentList \"/i `\"$msi`\" /quiet\" -Wait -NoNewWindow",
+      "Remove-Item $msi -Force"
+    ]
+  },
+  "uninstaller": {
+    "script": [
+      "$app_id = '{3B4C2D1A-7F6E-4A5B-8C9D-0E1F2A3B4C5D}'",
+      "$uninstall_key = \"HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$app_id\"",
+      "if (Test-Path $uninstall_key) {",
+      "    $uninstall_string = (Get-ItemProperty $uninstall_key).UninstallString",
+      "    Start-Process $uninstall_string -ArgumentList '/quiet' -Wait -NoNewWindow",
+      "}"
+    ]
+  },
+  "bin": [
+    [
+      "$env:LOCALAPPDATA\\ValoTracker\\ValoTracker.exe",
+      "valotracker"
+    ],
+    [
+      "$env:LOCALAPPDATA\\ValoTracker\\ValoTracker-gui.exe",
+      "valotracker-gui"
+    ]
+  ],
+  "shortcuts": [
+    [
+      "$env:LOCALAPPDATA\\ValoTracker\\ValoTracker.exe",
+      "ValoTracker"
+    ],
+    [
+      "$env:LOCALAPPDATA\\ValoTracker\\ValoTracker-gui.exe",
+      "ValoTracker GUI"
+    ]
+  ],
+  "checkver": {
+    "github": "https://github.com/Londopy/ValoTracker"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/Londopy/ValoTracker/releases/download/v$version/ValoTracker-$version-x86_64.msi",
+        "hash": {
+          "url": "https://github.com/Londopy/ValoTracker/releases/download/v$version/checksums.txt",
+          "regex": "([A-Fa-f0-9]{64})\\s+ValoTracker-$version-x86_64\\.msi"
+        }
+      }
+    }
+  }
+}

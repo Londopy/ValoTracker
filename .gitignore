@@ -20,6 +20,9 @@ venv/
 # maturin output
 /python/dist/
 
+# Pre-built Rust binaries staged into the Python wheel — never commit the exes
+python/valotracker/bin/*.exe
+
 # Editor
 .vscode/
 .idea/
