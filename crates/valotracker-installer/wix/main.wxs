@@ -77,16 +77,28 @@
           <Component Id="CompTui" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
             <File Id="ValoTrackerTuiExe"
                   Name="ValoTracker.exe"
-                  Source="$(env.WixTuiBinPath)"
-                  KeyPath="yes" />
+                  Source="$(env.WixTuiBinPath)" />
+            <!-- ICE64: clean up install directory on uninstall -->
+            <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+            <!-- ICE38: per-user components need a registry KeyPath, not a file -->
+            <RegistryValue Root="HKCU"
+                           Key="Software\ValoTracker"
+                           Name="TuiInstalled"
+                           Type="integer" Value="1"
+                           KeyPath="yes" />
           </Component>
 
           <!-- ── GUI binary ───────────────────────────────────────────────── -->
           <Component Id="CompGui" Guid="B2C3D4E5-F6A7-8901-BCDE-F12345678901">
             <File Id="ValoTrackerGuiExe"
                   Name="ValoTracker-gui.exe"
-                  Source="$(env.WixGuiBinPath)"
-                  KeyPath="yes" />
+                  Source="$(env.WixGuiBinPath)" />
+            <!-- ICE38: per-user components need a registry KeyPath, not a file -->
+            <RegistryValue Root="HKCU"
+                           Key="Software\ValoTracker"
+                           Name="GuiInstalled"
+                           Type="integer" Value="1"
+                           KeyPath="yes" />
           </Component>
 
         </Directory>
