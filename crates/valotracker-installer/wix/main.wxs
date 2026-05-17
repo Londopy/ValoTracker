@@ -2,10 +2,10 @@
 <!--
   ValoTracker MSI installer — built with cargo-wix.
 
-  Build locally:
-    cargo wix -p valotracker-installer --no-build --nocapture
+  Build locally (pass -no-build so cargo-wix skips recompiling):
+    cargo wix -p valotracker-installer -no-build -nocapture
 
-  CI passes pre-built binaries via WIX_* env vars; see release.yml.
+  CI passes pre-built binaries via env vars; see release.yml.
 
   Design decisions:
   • Per-user install to %LOCALAPPDATA%\ValoTracker — no UAC prompt.
