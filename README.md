@@ -190,10 +190,6 @@ ValoTracker is fully open source — every line of code is auditable in this rep
 - Release binaries are scanned by VirusTotal before publishing
 - SHA-256 checksums for every artifact are included in each [GitHub release](https://github.com/Londopy/ValoTracker/releases/latest)
 
-> **Updating the VirusTotal badge after a new release:**
-> 1. Upload the `.msi` or `.exe` from the latest release to [virustotal.com](https://www.virustotal.com)
-> 2. Copy the results URL and replace `VIRUSTOTAL_URL_HERE` in the badge above
-
 ---
 
 ## Project Layout
@@ -226,6 +222,8 @@ into the game process, or violate Riot's Terms of Service as interpreted for rea
 tooling.
 
 Use at your own risk. The authors are not affiliated with Riot Games.
+
+See [DISCLAIMER.md](DISCLAIMER.md).
 
 ---
 
