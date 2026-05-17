@@ -216,7 +216,9 @@ impl App {
 
     /// Open an encounter drill-down for the selected player.
     pub fn open_encounter(&mut self, puuid: &str, display_name: &str) {
-        let Some(db_arc) = &self.history_db else { return };
+        let Some(db_arc) = &self.history_db else {
+            return;
+        };
         if let Ok(encounters) = db_arc.lock().unwrap().get_player_encounters(puuid) {
             self.encounter_data = Some(encounters);
             self.encounter_name = display_name.to_owned();

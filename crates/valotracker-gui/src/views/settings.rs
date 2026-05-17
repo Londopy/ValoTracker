@@ -50,9 +50,7 @@ pub fn draw_settings_modal(
                 .changed()
             {
                 changed = true;
-                if let Err(e) =
-                    crate::startup::set_run_on_startup(config.features.run_on_startup)
-                {
+                if let Err(e) = crate::startup::set_run_on_startup(config.features.run_on_startup) {
                     status = Some(format!("Startup registry error: {e}"));
                 }
             }

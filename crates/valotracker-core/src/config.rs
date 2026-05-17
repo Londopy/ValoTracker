@@ -73,7 +73,9 @@ pub struct FeaturesConfig {
     pub last_update_checked: u64,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 /// The official ValoTracker Discord application ID.
 ///

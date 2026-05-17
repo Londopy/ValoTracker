@@ -236,7 +236,9 @@ impl GuiApp {
     }
 
     fn open_encounter(&mut self, puuid: &str, name: &str) {
-        let Some(db_arc) = &self.history_db else { return };
+        let Some(db_arc) = &self.history_db else {
+            return;
+        };
         if let Ok(enc) = db_arc.lock().unwrap().get_player_encounters(puuid) {
             self.encounter_data = enc;
             self.encounter_name = name.to_owned();
@@ -591,7 +593,6 @@ impl eframe::App for GuiApp {
         }
     }
 }
-
 
 // ── Tray icon builder ─────────────────────────────────────────────────────────
 

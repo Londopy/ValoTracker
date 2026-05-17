@@ -121,9 +121,7 @@ pub fn draw_history_view(
 
                         ui.add_sized(
                             [CW[3], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(wl_str).color(wl_col).strong(),
-                            ),
+                            egui::Label::new(egui::RichText::new(wl_str).color(wl_col).strong()),
                         );
                         ui.add_sized(
                             [CW[4], 20.0],
