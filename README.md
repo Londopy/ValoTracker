@@ -6,6 +6,7 @@
 
 [![CI](https://github.com/Londopy/ValoTracker/actions/workflows/release.yml/badge.svg)](https://github.com/Londopy/ValoTracker/actions/workflows/release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/Londopy/ValoTracker?color=ff4655&label=release)](https://github.com/Londopy/ValoTracker/releases/latest)
+[![PyPI](https://img.shields.io/pypi/v/valotracker)](https://pypi.org/project/valotracker3.0.0)
 [![Downloads](https://img.shields.io/github/downloads/Londopy/ValoTracker/total?color=4a9eff)](https://github.com/Londopy/ValoTracker/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4?logo=windows&logoColor=white)](https://github.com/Londopy/ValoTracker/releases/latest)
