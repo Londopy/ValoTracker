@@ -8,21 +8,32 @@
 
 ---
 
-## Option 1 — Pre-built Binary (Recommended)
+## Option 1 — Installer (Recommended)
 
 1. Go to the [Releases page](https://github.com/Londopy/ValoTracker/releases/latest).
-2. Download one of:
-   - `ValoTracker.exe` — terminal interface (TUI)
-   - `ValoTracker-gui.exe` — native desktop window (GUI)
-3. Place it anywhere on your machine (e.g. `C:\Tools\`).
-4. Launch VALORANT and queue for a match.
-5. Once you're in **agent select**, double-click the `.exe` (or run it from a terminal).
+2. Download `ValoTracker-Setup-x.x.x.exe` and run it.
+3. The setup wizard will guide you through:
+   - Choosing an install location
+   - Selecting components (TUI, GUI, or both)
+   - Adding desktop and Start Menu shortcuts
+4. Launch VALORANT, queue for a match, and open ValoTracker once you're in agent select.
 
-That's it — no installer, no configuration needed on first run. The config file is created automatically at `%APPDATA%\ValoTracker\config.toml` with sensible defaults.
+The config file is created automatically at `%APPDATA%\ValoTracker\config.toml` on first run.
 
 ---
 
-## Option 2 — Build from Source
+## Option 2 — Portable Binaries
+
+Prefer a no-install option? Download the standalone executables directly from the [Releases page](https://github.com/Londopy/ValoTracker/releases/latest):
+
+- `ValoTracker.exe` — terminal interface (TUI)
+- `ValoTracker-gui.exe` — native desktop window (GUI)
+
+Place either file anywhere on your machine and run it — no setup needed.
+
+---
+
+## Option 3 — Build from Source
 
 ### Prerequisites
 
@@ -47,7 +58,7 @@ cargo build --release -p valotracker-gui
 
 ---
 
-## Option 3 — Python Bindings
+## Option 4 — Python Bindings
 
 If you want to script against ValoTracker from Python:
 
