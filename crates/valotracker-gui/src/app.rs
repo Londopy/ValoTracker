@@ -209,7 +209,9 @@ impl GuiApp {
             self.set_status("DB unavailable");
             return;
         };
-        match db_arc.lock().unwrap().save_match(
+        // Bind the result before matching so the MutexGuard temporary is
+        // dropped at the semicolon — before self.set_status() needs &mut self.
+        let result = db_arc.lock().unwrap().save_match(
             &snap.match_id,
             &snap.map_name,
             &snap.queue_id,
@@ -217,7 +219,8 @@ impl GuiApp {
             &snap.players,
             &snap.my_puuid,
             None,
-        ) {
+        );
+        match result {
             Ok(_) => self.set_status("Match saved ✓"),
             Err(e) => self.set_status(format!("Save failed: {e}")),
         }
