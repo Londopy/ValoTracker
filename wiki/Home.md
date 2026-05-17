@@ -27,14 +27,15 @@ ValoTracker reads from VALORANT's own local client API (no login required, no th
 
 ## Quick Install
 
-Download the latest pre-built binary from the [Releases page](https://github.com/Londopy/ValoTracker/releases/latest):
+Download the latest installer from the [Releases page](https://github.com/Londopy/ValoTracker/releases/latest):
 
-| Binary | Interface |
+| Download | Description |
 |---|---|
-| `ValoTracker.exe` | Terminal (TUI) — recommended |
-| `ValoTracker-gui.exe` | Native desktop window (GUI) |
+| `ValoTracker-Setup-x.x.x.exe` | **Installer (recommended)** — wizard with component selection and shortcuts |
+| `ValoTracker.exe` | Portable terminal (TUI) — drop anywhere and run |
+| `ValoTracker-gui.exe` | Portable desktop window (GUI) — drop anywhere and run |
 
-Drop the `.exe` anywhere, launch VALORANT, queue up, and run it once you're in agent select.
+Run the installer, launch VALORANT, queue up, and open ValoTracker once you're in agent select.
 
 For detailed setup instructions see the **[Installation & Setup](Installation-and-Setup)** page.
 

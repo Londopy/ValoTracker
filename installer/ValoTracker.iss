@@ -48,7 +48,7 @@ SolidCompression=yes
 ; Appearance
 WizardStyle=modern
 WizardSizePercent=120
-SetupIconFile=
+SetupIconFile=ValoTracker.ico
 
 ; 64-bit Windows only
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -140,6 +140,7 @@ Name: "{group}\Uninstall ValoTracker"; \
 ; Desktop — TUI
 Name: "{autodesktop}\ValoTracker"; \
   Filename: "{app}\ValoTracker.exe"; \
+  IconFilename: "{app}\ValoTracker-GUI.exe"; \
   Comment: "Real-time VALORANT match tracker"; \
   Tasks: desktopicon_tui; \
   Components: tui
@@ -147,6 +148,7 @@ Name: "{autodesktop}\ValoTracker"; \
 ; Desktop — GUI
 Name: "{autodesktop}\ValoTracker GUI"; \
   Filename: "{app}\ValoTracker-GUI.exe"; \
+  IconFilename: "{app}\ValoTracker-GUI.exe"; \
   Comment: "Real-time VALORANT match tracker — desktop window"; \
   Tasks: desktopicon_gui; \
   Components: gui

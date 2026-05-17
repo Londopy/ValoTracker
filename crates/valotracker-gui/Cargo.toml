@@ -12,6 +12,9 @@ path = "src/main.rs"
 default = []
 gui = ["dep:eframe", "dep:egui", "dep:tray-icon", "dep:winreg"]
 
+[build-dependencies]
+winresource = "0.1"
+
 [dependencies]
 valotracker-core = { path = "../valotracker-core" }
 tokio      = { workspace = true }
