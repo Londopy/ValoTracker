@@ -1,0 +1,41 @@
+DISCLAIMER & LEGAL NOTICE
+=========================
+
+USE AT YOUR OWN RISK
+
+ValoTracker is an independent, open-source tool created for personal use and
+educational purposes. By installing or running this software, you agree to the
+following terms in full.
+
+NO AFFILIATION WITH RIOT GAMES
+
+ValoTracker is not affiliated with, endorsed by, sponsored by, or in any way
+officially connected to Riot Games, Inc. "VALORANT," "Riot Games," and all
+related names, marks, and logos are trademarks of Riot Games, Inc.
+
+HOW IT WORKS
+
+ValoTracker works exclusively by reading data from VALORANT's own local client
+API — HTTP endpoints that Riot exposes on 127.0.0.1 (localhost) while the game
+is running. These endpoints are read-only. ValoTracker never writes to, modifies,
+or injects into the game process, game files, or any Riot service. It does not
+ask for your username or password, and it does not transmit your credentials
+anywhere.
+
+NO GUARANTEE OF SAFETY
+
+Despite the above, Riot Games reserves the right to update their Terms of
+Service, ban policy, or anti-cheat systems at any time and without notice.
+The authors of ValoTracker make no guarantee that using this tool will not
+result in a ban, suspension, or other penalty to your VALORANT account, and
+accept no responsibility for any such action.
+
+You use this tool entirely at your own risk.
+
+MIT LICENSE
+
+This software is released under the MIT License. The MIT License further limits
+the liability of the author(s) to the maximum extent permitted by law.
+
+Full disclaimer: https://github.com/Londopy/ValoTracker/blob/main/DISCLAIMER.md
+Full license:    https://github.com/Londopy/ValoTracker/blob/main/LICENSE

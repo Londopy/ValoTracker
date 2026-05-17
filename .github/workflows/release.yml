@@ -33,9 +33,19 @@ jobs:
       - name: Build GUI release binary
         run: cargo build -p valotracker-gui --release --features gui
 
-      - name: Upload binaries to release
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          & $iscc /DAppVersion=$version installer\ValoTracker.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload binaries and installer to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             target/release/valotracker.exe
             target/release/valotracker-gui.exe
+            dist/ValoTracker-Setup-*.exe
