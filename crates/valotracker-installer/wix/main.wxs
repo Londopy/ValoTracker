@@ -77,7 +77,7 @@
           <Component Id="CompTui" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
             <File Id="ValoTrackerTuiExe"
                   Name="ValoTracker.exe"
-                  Source="$(var.TuiBinPath)"
+                  Source="$(env.WixTuiBinPath)"
                   KeyPath="yes" />
           </Component>
 
@@ -85,7 +85,7 @@
           <Component Id="CompGui" Guid="B2C3D4E5-F6A7-8901-BCDE-F12345678901">
             <File Id="ValoTrackerGuiExe"
                   Name="ValoTracker-gui.exe"
-                  Source="$(var.GuiBinPath)"
+                  Source="$(env.WixGuiBinPath)"
                   KeyPath="yes" />
           </Component>
 
