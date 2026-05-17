@@ -10,8 +10,8 @@
   ],
   "architecture": {
     "64bit": {
-      "url": "https://github.com/Londopy/ValoTracker/releases/download/v1.0.1/ValoTracker-1.0.1-x86_64.msi",
-      "hash": "PLACEHOLDER_SHA256_MSI"
+      "url": "https://github.com/Londopy/ValoTracker/releases/download/v3.0.0/ValoTracker-3.0.0-x86_64.msi",
+      "hash": "d2db0e434ea8afb4f417dbd79da8b6a0aefa2227b3582d9c830f127fdf59fc00"
     }
   },
   "installer": {
