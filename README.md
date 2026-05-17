@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4?logo=windows&logoColor=white)](https://github.com/Londopy/ValoTracker/releases/latest)
 [![Rust](https://img.shields.io/badge/rust-1.78%2B-orange?logo=rust&logoColor=white)](https://www.rust-lang.org)
-[![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-brightgreen?logo=virustotal&logoColor=white)](https://github.com/Londopy/ValoTracker/releases/latest)
+[![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-brightgreen?logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/url/9075d2f1dff71f71a3552631983715f1caf47c2bf951463a4083d2d5355075df/detection)
 
 Written in Rust · No account login · No API keys · Reads only from `127.0.0.1`
 
