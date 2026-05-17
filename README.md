@@ -1,124 +1,107 @@
+<div align="center">
+
 # ValoTracker
 
-A fast, privacy-first Valorant match tracker written in Rust.
+**Real-time VALORANT match tracker — ranks, stats, and encounter history for all 10 players, live.**
 
-> **Windows only.** Reads from the local Riot client lockfile — no username
-> or password required, no external account needed.
+[![CI](https://github.com/Londopy/ValoTracker/actions/workflows/release.yml/badge.svg)](https://github.com/Londopy/ValoTracker/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/Londopy/ValoTracker?color=ff4655&label=release)](https://github.com/Londopy/ValoTracker/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Londopy/ValoTracker/total?color=4a9eff)](https://github.com/Londopy/ValoTracker/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4?logo=windows&logoColor=white)](https://github.com/Londopy/ValoTracker/releases/latest)
+[![Rust](https://img.shields.io/badge/rust-1.78%2B-orange?logo=rust&logoColor=white)](https://www.rust-lang.org)
+[![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-brightgreen?logo=virustotal&logoColor=white)](https://github.com/Londopy/ValoTracker/releases/latest)
+
+Written in Rust · No account login · No API keys · Reads only from `127.0.0.1`
+
+</div>
 
 ---
 
 ## Features
 
-- **Live match table** — all 10 players with rank, RR, peak rank, HS%, K/D,
-  WR%, and party grouping, updated every 30 seconds
-- **Streamer-mode detection** — incognito players shown with an `[S]` tag
-- **Party indicators** — premade groups highlighted with icons (`★ ▲ ● ■`),
-  enemy premades tinted red
-- **Match history** — save matches to a local SQLite database and browse them
-  later; `[s]` to save, `[h]` to view
-- **Encounter tracking** — see every previous saved match against a given
-  player (the "Receipts" feature)
-- **Extended analytics** — agent stats, map stats, smurf flagging, party
-  win-rate breakdown, session tracking, nemesis/rivalry leaderboard
-- **TUI + optional GUI** — rich terminal UI by default; build with
-  `--features gui` for a native egui window
-- **Minimize to tray** — GUI can hide to the system tray instead of closing;
-  double-click the tray icon to restore
-- **Run on startup** — optionally launch ValoTracker automatically when Windows
-  starts (hidden in tray until needed)
-- **Idle waiting screen** — animated "Waiting for VALORANT…" screen when VALORANT isn't running; automatically transitions to the match view the moment it's detected
-- **Auto-updater** — silent background update check on startup; installs new versions in-place and shows a one-line notification; respects a 24-hour cooldown and an opt-out flag
-- **Windows toast notifications** — desktop notifications for match detection, data loaded, and update complete; opt-out via config
-- **Discord Rich Presence** — shows map, mode, party size, and elapsed time in Discord; opt-in via config
-- **MSI installer** — no-UAC per-user MSI built with cargo-wix, alongside the existing Inno Setup wizard
-- **Scoop bucket** — `scoop install valotracker`
-- **Python CLI launchers** — `valotracker` and `valotracker-gui` console scripts bundled with the wheel
-- **Python bindings** — `pip install valotracker` exposes the engine to Python via PyO3
-
----
-
-## Disclaimer
-
-`ValoTracker` reads data from VALORANT's local client endpoints
-(`https://127.0.0.1:{port}`) using credentials stored on your own machine.
-It does not bypass any external API, inject into the game process, or
-violate Riot's Terms of Service as interpreted for read-only local tooling.
-
-Use at your own risk. The authors are not affiliated with Riot Games.
+| | |
+|---|---|
+| 🎮 **Live match table** | All 10 players — rank, RR, peak rank, HS%, K/D, WR%, party grouping — refreshed every 30 s |
+| 👁 **Encounter tracking** | Click any player to see every previous match you've shared with them |
+| 💾 **Match history** | Save matches to a local SQLite database and browse them any time |
+| 🎉 **Party detection** | Premade groups highlighted with icons (`★ ▲ ● ■`); enemy premades tinted red |
+| 🕵️ **Streamer mode** | Incognito players shown with an `[S]` tag |
+| 🖥 **Desktop GUI** | Native egui window with side panels, settings modal, and minimize-to-tray |
+| 💻 **Terminal UI** | Full-featured ratatui TUI — works over SSH, no GPU required |
+| 🔔 **Toast notifications** | Desktop popups for match detection and update completion |
+| 🎮 **Discord Rich Presence** | Map, mode, party size, and elapsed time shown in Discord |
+| 🔄 **Auto-updater** | Silent background check on startup; installs new versions in-place |
+| 🚀 **Run on startup** | Optionally launch hidden in the system tray at Windows login |
+| 🐍 **Python bindings** | `pip install valotracker` — full engine exposed via PyO3 |
 
 ---
 
 ## Installation
 
-### Installer (recommended)
+### Option 1 — Inno Setup Wizard (recommended for most users)
 
-Download `ValoTracker-Setup-x.x.x.exe` from the
-[latest release](https://github.com/Londopy/ValoTracker/releases/latest) and
-run it. The wizard lets you choose which components to install (TUI, GUI, or
-both) and optionally adds desktop and Start Menu shortcuts.
+Download **`ValoTracker-Setup-x.x.x.exe`** from the
+[latest release](https://github.com/Londopy/ValoTracker/releases/latest) and run it.
+The wizard installs the TUI, GUI, or both — with optional desktop and Start Menu shortcuts.
 
-### Portable binaries
+### Option 2 — MSI Installer (enterprise / silent install)
 
-Prefer a no-install option? Grab `ValoTracker.exe` (TUI) or
-`ValoTracker-gui.exe` (GUI) directly from the
-[latest release](https://github.com/Londopy/ValoTracker/releases/latest) and
-drop it anywhere on your `PATH`.
+Download **`ValoTracker-x.x.x-x86_64.msi`** from the
+[latest release](https://github.com/Londopy/ValoTracker/releases/latest).
 
-### Scoop
+- Per-user install, **no UAC prompt required**
+- Supports silent deployment: `msiexec /i ValoTracker.msi /qn`
+
+### Option 3 — Portable Binaries
+
+Grab a standalone `.exe` directly from the
+[latest release](https://github.com/Londopy/ValoTracker/releases/latest) — no install needed, just drop it anywhere on your `PATH`.
+
+| File | Description |
+|------|-------------|
+| `ValoTracker.exe` | Terminal UI |
+| `ValoTracker-gui.exe` | Desktop GUI |
+
+### Option 4 — Scoop
 
 ```powershell
 scoop bucket add valotracker https://github.com/Londopy/ValoTracker
 scoop install valotracker
 ```
 
-### pip (Python)
+Scoop handles updates automatically (`scoop update valotracker`).
+
+### Option 5 — pip (Python)
 
 ```bash
 pip install valotracker
-valotracker        # launches TUI
-valotracker-gui    # launches GUI
+valotracker        # TUI
+valotracker-gui    # GUI
 ```
 
-### Build from source
+The wheel bundles pre-compiled Windows binaries — no Rust toolchain required.
+
+### Option 6 — Build from Source
 
 ```powershell
-# Clone
 git clone https://github.com/Londopy/ValoTracker.git
 cd ValoTracker
 
-# TUI (default)
+# TUI
 cargo build --release -p valotracker-tui
-# Binary: target\release\ValoTracker.exe
+# → target\release\ValoTracker.exe
 
-# GUI (egui)
+# GUI
 cargo build --release -p valotracker-gui --features gui
-# Binary: target\release\ValoTracker-gui.exe
+# → target\release\ValoTracker-gui.exe
 
-# MSI installer (requires cargo-wix and WiX Toolset v3)
+# MSI (requires cargo-wix and WiX Toolset v3)
 cargo install cargo-wix
 cargo wix -p valotracker-installer --no-build --nocapture
 ```
 
-**Requirements:** Rust 1.78+, Windows 10/11, VALORANT installed and running.
-
----
-
-## Security
-
-ValoTracker is open source. You can audit every line of code in this repository.
-
-Each release is scanned by VirusTotal before publishing.
-
-[![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-brightgreen)](VIRUSTOTAL_URL_HERE)
-
-**To update this badge after a new release:**
-1. Go to https://www.virustotal.com
-2. Upload the `.msi` or `.exe` from the latest GitHub release
-3. Copy the results URL from your browser after the scan
-4. Replace `VIRUSTOTAL_URL_HERE` in README.md with that URL
-5. Update the badge color: `brightgreen` = 0 detections · `yellow` = 1–2 (false positives) · `red` = investigate
-
-SHA-256 checksums for every release artifact are published in each [GitHub release](https://github.com/Londopy/ValoTracker/releases/latest).
+**Requirements:** Rust 1.78+, Windows 10/11, VALORANT installed.
 
 ---
 
@@ -136,8 +119,8 @@ ValoTracker.exe
 | `s` | Save current match to history |
 | `h` | Open match history |
 | `c` | Open config editor |
-| `j`/`k` or `↑`/`↓` | Navigate player rows |
-| `Enter`/`Tab` | Open encounter history for selected player |
+| `j` / `k` or `↑` / `↓` | Navigate player rows |
+| `Enter` / `Tab` | Open encounter history for selected player |
 | `q` / `Esc` | Quit |
 
 ### GUI
@@ -146,42 +129,33 @@ ValoTracker.exe
 ValoTracker-gui.exe
 ```
 
-Click any player with a 👁 icon to open their encounter history side panel.
+- Click any player with a 👁 icon to open their **encounter history** side panel
+- Use the **⚙ Settings** button to configure tray behaviour and startup options
+- The window minimizes to the **system tray** when closed (if enabled in Settings)
 
 ---
 
-## Python bindings
+## Python Bindings
 
 ```bash
-pip install ValoTracker
+pip install valotracker
 ```
 
 ```python
-import ValoTracker
+import valotracker
 
-client = ValoTracker.ValoTrackerClient()
-client.wait_for_match()          # blocks until you enter a match
+client = valotracker.ValoTrackerClient()
+client.wait_for_match()          # blocks until a match is detected
 
-players = client.get_players()
-for p in players:
+for p in client.get_players():
     print(f"{p.name}#{p.tag}  {p.rank_name} {p.rr}RR  HS:{p.headshot_pct:.0%}")
-
-# Party detection
-from collections import defaultdict
-parties = defaultdict(list)
-for p in players:
-    parties[p.party_id].append(p.name)
-for pid, members in parties.items():
-    if len(members) > 1:
-        print(f"Premade: {', '.join(members)}")
 ```
 
 ---
 
 ## Configuration
 
-`ValoTracker` stores its config at `%APPDATA%\ValoTracker\config.toml`. It is created
-automatically on first run with all defaults.
+Config is stored at `%APPDATA%\ValoTracker\config.toml` and created automatically on first run.
 
 ```toml
 [display]
@@ -189,71 +163,77 @@ show_streamer_tag       = true
 show_party_size         = true
 highlight_enemy_parties = true
 short_ranks             = false
-show_peak_act           = true
 show_level              = true
 show_kd                 = true
 show_hs                 = true
 show_wr                 = true
 show_rr_delta           = true
-auto_clear              = true
-
-[weapon]
-preferred = "Vandal"
 
 [features]
-discord_rpc                = false        # Enable Discord Rich Presence (no setup required)
-discord_app_id             = ""           # Leave blank to use the bundled ValoTracker app; set your own to customise
-gui                        = false        # Launch GUI instead of TUI by default
-smurf_flag_threshold_tiers = 8
-smurf_flag_threshold_days  = 30
-minimize_to_tray           = false        # GUI: minimize to tray on close
-run_on_startup             = false        # Launch at Windows login
-check_updates              = true         # Silent background update check (once per 24 h)
-notifications              = true         # Windows desktop toast notifications
+minimize_to_tray   = false   # GUI: minimize to tray on close instead of quitting
+run_on_startup     = false   # Add ValoTracker to Windows startup (hidden in tray)
+check_updates      = true    # Silent background update check (once per 24 h)
+notifications      = true    # Windows desktop toast notifications
+discord_rpc        = false   # Discord Rich Presence
+discord_app_id     = ""      # Leave blank to use the bundled app ID
 ```
 
-You can also edit all display toggles live from within the TUI by pressing
-`[c]` to open the config editor.
+Press `[c]` in the TUI to edit display settings live without touching the file.
 
 ---
 
-## Project layout
+## Security
+
+ValoTracker is fully open source — every line of code is auditable in this repository.
+
+- Connects **only to `127.0.0.1`** (the local Riot client); no data leaves your machine
+- Release binaries are scanned by VirusTotal before publishing
+- SHA-256 checksums for every artifact are included in each [GitHub release](https://github.com/Londopy/ValoTracker/releases/latest)
+
+> **Updating the VirusTotal badge after a new release:**
+> 1. Upload the `.msi` or `.exe` from the latest release to [virustotal.com](https://www.virustotal.com)
+> 2. Copy the results URL and replace `VIRUSTOTAL_URL_HERE` in the badge above
+
+---
+
+## Project Layout
 
 ```
 ValoTracker/
 ├── crates/
-│   ├── valotracker-core/       # Engine (async Rust, no UI code)
-│   │   ├── src/updater.rs      # Silent background auto-updater
-│   │   ├── src/notifications.rs# Windows toast notifications
-│   │   └── src/discord.rs      # Discord Rich Presence
+│   ├── valotracker-core/       # Engine: API, history, updater, Discord, notifications
 │   ├── valotracker-tui/        # ratatui terminal frontend
 │   ├── valotracker-gui/        # egui desktop GUI (--features gui)
-│   ├── valotracker-py/         # PyO3 Python bindings → PyPI
-│   └── valotracker-installer/  # cargo-wix MSI packaging target
-│       └── wix/main.wxs        # WiX descriptor
+│   │   └── src/views/          # Modular view files (match, history, encounter…)
+│   ├── valotracker-py/         # PyO3 Python bindings → PyPI wheel
+│   └── valotracker-installer/  # cargo-wix MSI target
 ├── installer/
 │   └── ValoTracker.iss         # Inno Setup script (per-user, no UAC)
 ├── scoop/
 │   └── valotracker.json        # Scoop manifest with autoupdate
-├── python/                     # Python package (pip install valotracker)
-│   ├── valotracker/
-│   │   ├── launcher.py         # run_tui() / run_gui() console scripts
-│   │   ├── __main__.py         # python -m valotracker
-│   │   └── bin/                # Pre-compiled .exe files (staged by CI)
-│   ├── pyproject.toml
-│   └── MANIFEST.in
+├── python/                     # Python package source (pip install valotracker)
 └── .github/
-    ├── workflows/release.yml   # Full CI: build → MSI → wheel → PyPI → release
-    └── release_template.md     # Release body template with SHA-256 table
+    └── workflows/release.yml   # CI: build → MSI → wheel → PyPI → GitHub release
 ```
+
+---
+
+## Disclaimer
+
+ValoTracker reads data from VALORANT's local client endpoints (`https://127.0.0.1:{port}`)
+using credentials stored on your own machine. It does not bypass any external API, inject
+into the game process, or violate Riot's Terms of Service as interpreted for read-only local
+tooling.
+
+Use at your own risk. The authors are not affiliated with Riot Games.
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome!
 
-PRs welcome. Please run before submitting:
+Please run before submitting:
 
 ```bash
 cargo fmt --all
@@ -266,9 +246,3 @@ cargo test --workspace
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
----
-
-## Disclaimer
-
-See [DISCLAIMER.md](DISCLAIMER.md).
