@@ -58,7 +58,7 @@
     <UIRef Id="WixUI_ErrorProgressText" />
 
     <!-- Skip the license dialog (open-source MIT — no click-through required) -->
-    <WixVariable Id="WixUILicenseRtf" Value="wix\License.rtf" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(sys.SOURCEFILEDIR)License.rtf" />
 
     <!-- Banner and dialog bitmaps (optional; WiX ships defaults) -->
     <!-- <WixVariable Id="WixUIBannerBmp"  Value="wix\Banner.bmp"  /> -->
