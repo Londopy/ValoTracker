@@ -144,10 +144,10 @@ jobs:
           (Get-Content pyproject.toml) `
             -replace 'version = ".*"', "version = `"$env:VERSION`"" `
             | Set-Content pyproject.toml
-          # Build wheel forced to win_amd64
-          pip wheel . --no-deps -w dist/ --plat-name win_amd64
+          # Build wheel (platform tag applied via rename below)
+          python -m build --wheel --no-isolation --outdir dist/
           $whl = Get-ChildItem dist\*.whl | Select-Object -First 1
-          # Rename to canonical versioned name
+          # Rename to canonical versioned name with win_amd64 platform tag
           $canonical = "valotracker-$env:VERSION-py3-none-win_amd64.whl"
           Move-Item $whl.FullName "dist\$canonical" -Force
           echo "WHL_PATH=python\dist\$canonical" >> $env:GITHUB_ENV
