@@ -13,6 +13,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use eframe::egui;
+use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
+use tray_icon::{TrayIconBuilder, TrayIconEvent};
 use valotracker_core::{
     history::{MatchHistory, PlayerEncounter, SavedMatch},
     tier_to_name, tier_to_short, Config, MatchSnapshot, ResolvedPlayer, ValoTrackerError,
@@ -52,6 +54,15 @@ enum Tab {
     History,
 }
 
+// ── Tray icon state ───────────────────────────────────────────────────────────
+
+struct TrayState {
+    /// Keep the TrayIcon alive — dropping it removes the tray icon.
+    _icon: tray_icon::TrayIcon,
+    show_id: tray_icon::menu::MenuId,
+    quit_id: tray_icon::menu::MenuId,
+}
+
 // ── Main application struct ───────────────────────────────────────────────────
 
 pub struct GuiApp {
@@ -68,6 +79,11 @@ pub struct GuiApp {
     history: Vec<SavedMatch>,
     history_sel: Option<usize>,
     status_msg: Option<(String, Instant)>,
+
+    // Tray + window management
+    tray: Option<TrayState>,
+    quit_requested: bool,
+    show_settings: bool,
 }
 
 impl GuiApp {
@@ -103,6 +119,9 @@ impl GuiApp {
             history: Vec::new(),
             history_sel: None,
             status_msg: None,
+            tray: build_tray(),
+            quit_requested: false,
+            show_settings: false,
         }
     }
 
@@ -166,6 +185,30 @@ impl GuiApp {
                 self.encounter_data = enc;
                 self.encounter_name = name.to_owned();
                 self.show_encounter = true;
+            }
+        }
+    }
+
+    /// Drain tray icon / tray menu events and act on them.
+    fn process_tray_events(&mut self, ctx: &egui::Context) {
+        // Double-click on the tray icon → restore window
+        while let Ok(event) = TrayIconEvent::receiver().try_recv() {
+            if matches!(event, TrayIconEvent::DoubleClick { .. }) {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+            }
+        }
+
+        // Tray menu clicks
+        while let Ok(event) = MenuEvent::receiver().try_recv() {
+            if let Some(ts) = &self.tray {
+                if event.id == ts.show_id {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                } else if event.id == ts.quit_id {
+                    self.quit_requested = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
             }
         }
     }
@@ -244,6 +287,15 @@ fn bg_thread(bg: Arc<Mutex<BgState>>, rf: Arc<AtomicBool>, ctx: egui::Context) {
 
 impl eframe::App for GuiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // ── Tray events + minimize-to-tray close handling ─────────────────────
+        self.process_tray_events(ctx);
+        if ctx.input(|i| i.viewport().close_requested()) {
+            if self.config.features.minimize_to_tray && !self.quit_requested {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            }
+        }
+
         // Expire status messages after 3 seconds
         if let Some((_, ts)) = &self.status_msg {
             if ts.elapsed() > Duration::from_secs(3) {
@@ -283,6 +335,7 @@ impl eframe::App for GuiApp {
         let mut do_refresh = false;
         let mut do_save = false;
         let mut do_history = false;
+        let mut do_settings = false;
         egui::TopBottomPanel::top("topbar")
             .frame(
                 egui::Frame::none()
@@ -297,6 +350,7 @@ impl eframe::App for GuiApp {
                     &mut do_refresh,
                     &mut do_save,
                     &mut do_history,
+                    &mut do_settings,
                 );
             });
 
@@ -338,6 +392,9 @@ impl eframe::App for GuiApp {
         if do_history {
             self.open_history();
         }
+        if do_settings {
+            self.show_settings = !self.show_settings;
+        }
 
         if let Some((puuid, name)) = open_enc {
             self.open_encounter(&puuid, &name);
@@ -356,6 +413,13 @@ impl eframe::App for GuiApp {
                 self.history_sel = self.history.len().checked_sub(1);
             }
         }
+
+        // ── Settings modal ────────────────────────────────────────────────────
+        if self.show_settings {
+            if let Some(msg) = draw_settings_modal(ctx, &mut self.config, &mut self.show_settings) {
+                self.set_status(msg);
+            }
+        }
     }
 }
 
@@ -368,6 +432,7 @@ fn draw_topbar(
     do_refresh: &mut bool,
     do_save: &mut bool,
     do_history: &mut bool,
+    do_settings: &mut bool,
 ) {
     ui.horizontal(|ui| {
         // Logo
@@ -402,6 +467,13 @@ fn draw_topbar(
         // Right-aligned controls
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.add_space(4.0);
+
+            // Settings gear (far right)
+            if ui.button("⚙").on_hover_text("Settings").clicked() {
+                *do_settings = true;
+            }
+            ui.separator();
+
             // Tabs
             ui.selectable_value(tab, Tab::History, "📋 History");
             if ui.selectable_value(tab, Tab::Match, "🎮 Live").clicked() {}
@@ -1045,4 +1117,113 @@ fn draw_encounter_panel(
                     }
                 });
         });
+}
+
+// ── Tray icon builder ─────────────────────────────────────────────────────────
+
+/// Build the system tray icon and menu. Returns `None` if the tray is
+/// unavailable (e.g. running in a headless environment).
+fn build_tray() -> Option<TrayState> {
+    // 32×32 solid VALORANT-red (#FF4655) icon as RGBA bytes
+    const SIZE: u32 = 32;
+    let rgba: Vec<u8> = std::iter::repeat([0xFF_u8, 0x46, 0x55, 0xFF])
+        .take((SIZE * SIZE) as usize)
+        .flatten()
+        .collect();
+
+    let icon = tray_icon::Icon::from_rgba(rgba, SIZE, SIZE)
+        .map_err(|e| eprintln!("tray icon: {e}"))
+        .ok()?;
+
+    let show_item = MenuItem::new("Open ValoTracker", true, None);
+    let quit_item = MenuItem::new("Quit", true, None);
+    let show_id = show_item.id().clone();
+    let quit_id = quit_item.id().clone();
+
+    let menu = Menu::new();
+    menu.append_items(&[&show_item, &PredefinedMenuItem::separator(), &quit_item])
+        .map_err(|e| eprintln!("tray menu: {e}"))
+        .ok()?;
+
+    let tray = TrayIconBuilder::new()
+        .with_menu(Box::new(menu))
+        .with_tooltip("ValoTracker")
+        .with_icon(icon)
+        .build()
+        .map_err(|e| eprintln!("tray: {e}"))
+        .ok()?;
+
+    Some(TrayState {
+        _icon: tray,
+        show_id,
+        quit_id,
+    })
+}
+
+// ── Settings modal ────────────────────────────────────────────────────────────
+
+/// Draw the settings window. Returns a status message string if something
+/// noteworthy happened (e.g. registry write failed).
+fn draw_settings_modal(
+    ctx: &egui::Context,
+    config: &mut valotracker_core::Config,
+    open: &mut bool,
+) -> Option<String> {
+    let mut status: Option<String> = None;
+
+    egui::Window::new("⚙  Settings")
+        .collapsible(false)
+        .resizable(false)
+        .min_width(340.0)
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .open(open)
+        .show(ctx, |ui| {
+            ui.add_space(4.0);
+            ui.label(egui::RichText::new("Window").strong().color(colors::HEADER));
+            ui.separator();
+
+            let mut changed = false;
+
+            if ui
+                .checkbox(
+                    &mut config.features.minimize_to_tray,
+                    "Minimize to tray when window is closed",
+                )
+                .changed()
+            {
+                changed = true;
+            }
+
+            ui.add_space(2.0);
+
+            if ui
+                .checkbox(
+                    &mut config.features.run_on_startup,
+                    "Launch ValoTracker when Windows starts",
+                )
+                .on_hover_text("Adds an entry to HKCU\\...\\Run in the Windows registry")
+                .changed()
+            {
+                changed = true;
+                if let Err(e) = crate::startup::set_run_on_startup(config.features.run_on_startup) {
+                    status = Some(format!("Startup registry error: {e}"));
+                }
+            }
+
+            if changed {
+                if let Err(e) = config.save() {
+                    status = Some(format!("Config save failed: {e}"));
+                }
+            }
+
+            ui.add_space(8.0);
+            ui.separator();
+            ui.label(
+                egui::RichText::new("Changes are saved automatically.")
+                    .small()
+                    .color(colors::DIM),
+            );
+        });
+
+    status
 }
