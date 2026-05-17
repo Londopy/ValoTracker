@@ -39,9 +39,17 @@ Use at your own risk. The authors are not affiliated with Riot Games.
 
 ## Installation
 
-### Pre-built binaries (Windows)
+### Installer (recommended)
 
-Download `ValoTracker.exe` (TUI) or `ValoTracker-gui.exe` (GUI) from the
+Download `ValoTracker-Setup-x.x.x.exe` from the
+[latest release](https://github.com/Londopy/ValoTracker/releases/latest) and
+run it. The wizard lets you choose which components to install (TUI, GUI, or
+both) and optionally adds desktop and Start Menu shortcuts.
+
+### Portable binaries
+
+Prefer a no-install option? Grab `ValoTracker.exe` (TUI) or
+`ValoTracker-gui.exe` (GUI) directly from the
 [latest release](https://github.com/Londopy/ValoTracker/releases/latest) and
 drop it anywhere on your `PATH`.
 
@@ -132,18 +140,22 @@ show_streamer_tag       = true
 show_party_size         = true
 highlight_enemy_parties = true
 short_ranks             = false
+show_peak_act           = true
 show_level              = true
 show_kd                 = true
 show_hs                 = true
 show_wr                 = true
 show_rr_delta           = true
+auto_clear              = true
 
 [weapon]
 preferred = "Vandal"
 
 [features]
-discord_rpc = false
-gui         = false
+discord_rpc                = false
+gui                        = false
+smurf_flag_threshold_tiers = 8
+smurf_flag_threshold_days  = 30
 ```
 
 You can also edit all display toggles live from within the TUI by pressing
