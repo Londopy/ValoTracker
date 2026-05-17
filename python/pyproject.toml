@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "valotracker"
@@ -54,5 +54,4 @@ valotracker = [
 [tool.setuptools]
 platforms = ["win32"]
 
-# Force win_amd64 tag when building the wheel.
-# Run: pip wheel . --no-deps -w dist/ --plat-name win_amd64
+# Force win_amd64 tag by renaming the wheel after build (see release.yml).

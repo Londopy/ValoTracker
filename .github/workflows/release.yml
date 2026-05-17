@@ -133,7 +133,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install wheel build tools
-        run: pip install build
+        run: pip install build "setuptools>=61" wheel
 
       # ── Build the Python wheel ────────────────────────────────────────────────
       - name: Build Python wheel
