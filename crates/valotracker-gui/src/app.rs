@@ -9,28 +9,43 @@
 //!   egui wakes up immediately instead of waiting for the next frame.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use eframe::egui;
 use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 use tray_icon::{TrayIconBuilder, TrayIconEvent};
 use valotracker_core::{
+    discord::{DiscordRpc, PresenceUpdate},
     history::{MatchHistory, PlayerEncounter, SavedMatch},
-    tier_to_name, tier_to_short, Config, MatchSnapshot, ResolvedPlayer, ValoTrackerError,
+    updater::{self, UpdateResult},
+    Config, MatchSnapshot, ResolvedPlayer, ValoTrackerError,
 };
 
-use crate::colors;
+use crate::{
+    colors,
+    views::{
+        encounter::draw_encounter_panel,
+        history::draw_history_view,
+        match_view::draw_match_view,
+        settings::draw_settings_modal,
+        topbar::{draw_statusbar, draw_topbar},
+    },
+};
 
 // ── Shared state (bg thread → render thread) ─────────────────────────────────
 
 #[derive(Clone)]
-struct BgState {
-    snapshot: Option<MatchSnapshot>,
-    error: Option<String>,
-    loading: bool,
-    load_duration: Option<Duration>,
-    last_refresh: Option<Instant>,
+pub(crate) struct BgState {
+    pub(crate) snapshot: Option<MatchSnapshot>,
+    pub(crate) error: Option<String>,
+    pub(crate) loading: bool,
+    pub(crate) load_duration: Option<Duration>,
+    pub(crate) last_refresh: Option<Instant>,
+    /// True once VALORANT has been detected at least once (lockfile found).
+    pub(crate) valorant_detected: bool,
+    /// Pending update notification from the auto-updater.
+    pub(crate) update_notice: Option<String>,
 }
 
 impl Default for BgState {
@@ -41,6 +56,8 @@ impl Default for BgState {
             loading: true,
             load_duration: None,
             last_refresh: None,
+            valorant_detected: false,
+            update_notice: None,
         }
     }
 }
@@ -48,10 +65,21 @@ impl Default for BgState {
 // ── Tab enum ──────────────────────────────────────────────────────────────────
 
 #[derive(PartialEq, Clone, Copy, Default)]
-enum Tab {
+pub(crate) enum Tab {
     #[default]
     Match,
     History,
+}
+
+/// Sorted player list: ally team (highest rank first), then enemy team.
+/// Free function used by match_view so it doesn't need a GuiApp reference.
+pub(crate) fn sorted_players(snap: &MatchSnapshot) -> Vec<&ResolvedPlayer> {
+    let mut allies: Vec<_> = snap.players.iter().filter(|p| p.is_ally).collect();
+    let mut enemies: Vec<_> = snap.players.iter().filter(|p| !p.is_ally).collect();
+    allies.sort_by_key(|p| std::cmp::Reverse(p.rank.tier));
+    enemies.sort_by_key(|p| std::cmp::Reverse(p.rank.tier));
+    allies.extend(enemies);
+    allies
 }
 
 // ── Tray icon state ───────────────────────────────────────────────────────────
@@ -84,6 +112,16 @@ pub struct GuiApp {
     tray: Option<TrayState>,
     quit_requested: bool,
     show_settings: bool,
+
+    // Auto-updater
+    update_rx: Option<mpsc::Receiver<UpdateResult>>,
+    // Toast: (message, expiry_instant)
+    toast: Option<(String, Instant)>,
+
+    /// Single shared database connection — opened once at startup and reused
+    /// across all history operations to avoid paying the open/schema-check cost
+    /// on every user action.
+    history_db: Option<Arc<Mutex<MatchHistory>>>,
 }
 
 impl GuiApp {
@@ -100,19 +138,43 @@ impl GuiApp {
         let bg = Arc::new(Mutex::new(BgState::default()));
         let refresh_flag = Arc::new(AtomicBool::new(false));
 
-        // Spawn background engine/refresh thread
+        // Load config first so we can pass discord settings to bg_thread
+        let mut config = Config::load().unwrap_or_default();
+
+        // Spawn background engine/refresh thread (passes Discord config)
         {
             let bg2 = bg.clone();
             let rf2 = refresh_flag.clone();
             let ctx = cc.egui_ctx.clone();
-            std::thread::spawn(move || bg_thread(bg2, rf2, ctx));
+            let discord_enabled = config.features.discord_rpc;
+            let discord_app_id = config.features.discord_app_id.clone();
+            std::thread::spawn(move || bg_thread(bg2, rf2, ctx, discord_enabled, discord_app_id));
         }
+
+        // Spawn background update check (non-blocking)
+        let update_rx = if config.features.check_updates && config.update_check_due() {
+            config.mark_update_checked();
+            let (tx, rx) = mpsc::channel();
+            updater::spawn_update_check(Some(tx));
+            Some(rx)
+        } else {
+            None
+        };
+
+        // Open the history database once at startup.
+        let history_db = match MatchHistory::open() {
+            Ok(db) => Some(Arc::new(Mutex::new(db))),
+            Err(e) => {
+                tracing::error!("Failed to open history database at startup: {e}");
+                None
+            }
+        };
 
         Self {
             bg,
             refresh_flag,
             tab: Tab::default(),
-            config: Config::load().unwrap_or_default(),
+            config,
             show_encounter: false,
             encounter_name: String::new(),
             encounter_data: Vec::new(),
@@ -122,6 +184,9 @@ impl GuiApp {
             tray: build_tray(),
             quit_requested: false,
             show_settings: false,
+            update_rx,
+            toast: None,
+            history_db,
         }
     }
 
@@ -135,41 +200,32 @@ impl GuiApp {
         self.status_msg = Some((msg.into(), Instant::now()));
     }
 
-    /// Sorted player list: ally team (highest rank first), then enemy team.
-    fn display_players<'a>(snap: &'a MatchSnapshot) -> Vec<&'a ResolvedPlayer> {
-        let mut allies: Vec<_> = snap.players.iter().filter(|p| p.is_ally).collect();
-        let mut enemies: Vec<_> = snap.players.iter().filter(|p| !p.is_ally).collect();
-        allies.sort_by_key(|p| std::cmp::Reverse(p.rank.tier));
-        enemies.sort_by_key(|p| std::cmp::Reverse(p.rank.tier));
-        allies.extend(enemies);
-        allies
-    }
-
     fn save_match_action(&mut self, bg: &BgState) {
         let Some(snap) = &bg.snapshot else {
             self.set_status("No match to save");
             return;
         };
-        match MatchHistory::open() {
-            Ok(db) => match db.save_match(
-                &snap.match_id,
-                &snap.map_name,
-                &snap.queue_id,
-                &snap.server,
-                &snap.players,
-                &snap.my_puuid,
-                None,
-            ) {
-                Ok(_) => self.set_status("Match saved ✓"),
-                Err(e) => self.set_status(format!("Save failed: {e}")),
-            },
-            Err(e) => self.set_status(format!("DB error: {e}")),
+        let Some(db_arc) = &self.history_db else {
+            self.set_status("DB unavailable");
+            return;
+        };
+        match db_arc.lock().unwrap().save_match(
+            &snap.match_id,
+            &snap.map_name,
+            &snap.queue_id,
+            &snap.server,
+            &snap.players,
+            &snap.my_puuid,
+            None,
+        ) {
+            Ok(_) => self.set_status("Match saved ✓"),
+            Err(e) => self.set_status(format!("Save failed: {e}")),
         }
     }
 
     fn open_history(&mut self) {
-        if let Ok(db) = MatchHistory::open() {
-            self.history = db.list_matches(100).unwrap_or_default();
+        if let Some(db_arc) = &self.history_db {
+            self.history = db_arc.lock().unwrap().list_matches(100).unwrap_or_default();
         }
         self.tab = Tab::History;
         self.history_sel = if self.history.is_empty() {
@@ -180,12 +236,11 @@ impl GuiApp {
     }
 
     fn open_encounter(&mut self, puuid: &str, name: &str) {
-        if let Ok(db) = MatchHistory::open() {
-            if let Ok(enc) = db.get_player_encounters(puuid) {
-                self.encounter_data = enc;
-                self.encounter_name = name.to_owned();
-                self.show_encounter = true;
-            }
+        let Some(db_arc) = &self.history_db else { return };
+        if let Ok(enc) = db_arc.lock().unwrap().get_player_encounters(puuid) {
+            self.encounter_data = enc;
+            self.encounter_name = name.to_owned();
+            self.show_encounter = true;
         }
     }
 
@@ -216,21 +271,47 @@ impl GuiApp {
 
 // ── Background engine thread ──────────────────────────────────────────────────
 
-fn bg_thread(bg: Arc<Mutex<BgState>>, rf: Arc<AtomicBool>, ctx: egui::Context) {
+fn bg_thread(
+    bg: Arc<Mutex<BgState>>,
+    rf: Arc<AtomicBool>,
+    ctx: egui::Context,
+    discord_enabled: bool,
+    discord_app_id: String,
+) {
+    // Initialise Discord RPC if enabled and app_id is set
+    let rpc: Option<DiscordRpc> = if discord_enabled && !discord_app_id.is_empty() {
+        Some(DiscordRpc::start(&discord_app_id))
+    } else {
+        None
+    };
+
+    // Set idle presence while waiting for VALORANT
+    if let Some(r) = &rpc {
+        r.send(PresenceUpdate::Idle);
+    }
+
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async move {
-        // ── Initialise engine (retry every 5s until VALORANT is running) ──────
+        // ── Initialise engine (retry every 2s until VALORANT is running) ──────
         let mut engine = loop {
             match valotracker_core::engine::Engine::init().await {
                 Ok(e) => break e,
-                Err(e) => {
-                    bg.lock().unwrap().error = Some(format!("{e}"));
+                Err(_) => {
+                    {
+                        let mut s = bg.lock().unwrap();
+                        s.valorant_detected = false;
+                        s.loading = false;
+                    }
                     ctx.request_repaint();
-                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    tokio::time::sleep(Duration::from_secs(2)).await;
                 }
             }
         };
-        bg.lock().unwrap().error = None;
+        {
+            let mut s = bg.lock().unwrap();
+            s.valorant_detected = true;
+            s.error = None;
+        }
 
         // ── Main refresh loop ─────────────────────────────────────────────────
         loop {
@@ -247,23 +328,69 @@ fn bg_thread(bg: Arc<Mutex<BgState>>, rf: Arc<AtomicBool>, ctx: egui::Context) {
                 .await
             {
                 Ok(snap) => {
+                    let player_count = snap.players.len();
+                    let map_name = snap.map_name.clone();
+                    let queue_id = snap.queue_id.clone();
+                    // Find the local player's party size
+                    let my_party_size = {
+                        let me = snap.players.iter().find(|p| p.is_ally && p.party_size > 0);
+                        me.map(|p| p.party_size).unwrap_or(1)
+                    };
+
                     let mut s = bg.lock().unwrap();
+                    let was_none = s.snapshot.is_none();
                     s.snapshot = Some(snap);
                     s.error = None;
                     s.loading = false;
                     s.load_duration = Some(t0.elapsed());
                     s.last_refresh = Some(Instant::now());
+                    drop(s);
+
+                    // Discord presence: In Match
+                    if let Some(r) = &rpc {
+                        r.send(PresenceUpdate::InMatch {
+                            map: map_name.clone(),
+                            mode: queue_id.clone(),
+                            party_size: my_party_size,
+                            party_max: 5,
+                            start_epoch: 0,
+                        });
+                    }
+
+                    // Fire toast only when a match is newly detected
+                    if was_none {
+                        valotracker_core::notifications::notify(
+                            "ValoTracker — Match detected!",
+                            &format!("Tracking {player_count} players."),
+                            true,
+                        );
+                    }
                 }
                 Err(ValoTrackerError::NotInMatch) => {
                     let mut s = bg.lock().unwrap();
+                    let had_snapshot = s.snapshot.is_some();
                     s.snapshot = None;
                     s.error = Some("Not in a match — waiting…".to_owned());
                     s.loading = false;
+                    drop(s);
+
+                    // Discord presence: back to Idle when match ends
+                    if had_snapshot {
+                        if let Some(r) = &rpc {
+                            r.send(PresenceUpdate::Idle);
+                        }
+                    }
                 }
                 Err(e) => {
                     let mut s = bg.lock().unwrap();
                     s.error = Some(format!("{e}"));
                     s.loading = false;
+                    drop(s);
+
+                    // Discord: clear presence on unexpected error
+                    if let Some(r) = &rpc {
+                        r.send(PresenceUpdate::Clear);
+                    }
                 }
             }
             ctx.request_repaint();
@@ -293,6 +420,26 @@ impl eframe::App for GuiApp {
             if self.config.features.minimize_to_tray && !self.quit_requested {
                 ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            }
+        }
+
+        // ── Poll auto-updater result ──────────────────────────────────────────
+        if let Some(rx) = &self.update_rx {
+            if let Ok(result) = rx.try_recv() {
+                if let UpdateResult::Updated(ver) = result {
+                    self.toast = Some((
+                        format!("ValoTracker updated to v{ver} — restart to apply"),
+                        Instant::now(),
+                    ));
+                }
+                self.update_rx = None;
+            }
+        }
+
+        // ── Expire toast (6 seconds) ──────────────────────────────────────────
+        if let Some((_, ts)) = &self.toast {
+            if ts.elapsed() > Duration::from_secs(6) {
+                self.toast = None;
             }
         }
 
@@ -401,8 +548,8 @@ impl eframe::App for GuiApp {
         }
 
         if let Some(id) = delete_id {
-            if let Ok(db) = MatchHistory::open() {
-                let _ = db.delete_match(&id);
+            if let Some(db_arc) = &self.history_db {
+                let _ = db_arc.lock().unwrap().delete_match(&id);
             }
             self.history.retain(|m| m.id != id);
             if self
@@ -420,704 +567,31 @@ impl eframe::App for GuiApp {
                 self.set_status(msg);
             }
         }
-    }
-}
 
-// ── Top bar ───────────────────────────────────────────────────────────────────
-
-fn draw_topbar(
-    ui: &mut egui::Ui,
-    bg: &BgState,
-    tab: &mut Tab,
-    do_refresh: &mut bool,
-    do_save: &mut bool,
-    do_history: &mut bool,
-    do_settings: &mut bool,
-) {
-    ui.horizontal(|ui| {
-        // Logo
-        ui.label(
-            egui::RichText::new("ValoTracker")
-                .strong()
-                .size(17.0)
-                .color(colors::ACCENT),
-        );
-        ui.separator();
-
-        // Match info
-        if let Some(snap) = &bg.snapshot {
-            ui.label(egui::RichText::new(&snap.map_name).strong());
-            ui.separator();
-            ui.label(
-                egui::RichText::new(&snap.queue_id).color(egui::Color32::from_rgb(180, 180, 180)),
-            );
-            if !snap.server.is_empty() {
-                ui.separator();
-                ui.label(
-                    egui::RichText::new(&snap.server).color(egui::Color32::from_rgb(130, 130, 150)),
-                );
-            }
-        } else if bg.loading {
-            ui.spinner();
-            ui.label(egui::RichText::new("Connecting…").color(egui::Color32::GRAY));
-        } else if let Some(err) = &bg.error {
-            ui.label(egui::RichText::new(err).color(egui::Color32::from_rgb(200, 100, 100)));
-        }
-
-        // Right-aligned controls
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.add_space(4.0);
-
-            // Settings gear (far right)
-            if ui.button("⚙").on_hover_text("Settings").clicked() {
-                *do_settings = true;
-            }
-            ui.separator();
-
-            // Tabs
-            ui.selectable_value(tab, Tab::History, "📋 History");
-            if ui.selectable_value(tab, Tab::Match, "🎮 Live").clicked() {}
-            ui.separator();
-
-            if ui
-                .add_enabled(!bg.loading, egui::Button::new("⟳ Refresh"))
-                .on_hover_text("Force a data refresh (r)")
-                .clicked()
-            {
-                *do_refresh = true;
-            }
-
-            if ui
-                .add_enabled(bg.snapshot.is_some(), egui::Button::new("💾 Save"))
-                .on_hover_text("Save current match to history (s)")
-                .clicked()
-            {
-                *do_save = true;
-            }
-
-            if ui
-                .button("📋 History")
-                .on_hover_text("Open match history (h)")
-                .clicked()
-            {
-                *do_history = true;
-                *tab = Tab::History;
-            }
-        });
-    });
-}
-
-// ── Status bar ────────────────────────────────────────────────────────────────
-
-fn draw_statusbar(ui: &mut egui::Ui, bg: &BgState, status_msg: &Option<(String, Instant)>) {
-    ui.horizontal(|ui| {
-        if let Some((msg, _)) = status_msg {
-            ui.label(
-                egui::RichText::new(msg)
-                    .color(egui::Color32::from_rgb(100, 220, 100))
-                    .small(),
-            );
-        } else {
-            ui.label(
-                egui::RichText::new("[⟳] Refresh   [💾] Save   [📋] History   [Esc] Close panel")
-                    .color(colors::DIM)
-                    .small(),
-            );
-        }
-
-        if let Some(dur) = bg.load_duration {
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.label(
-                    egui::RichText::new(format!("Loaded in {:.1}s", dur.as_secs_f32()))
-                        .color(colors::DIM)
-                        .small(),
-                );
-            });
-        }
-    });
-}
-
-// ── Match view ────────────────────────────────────────────────────────────────
-
-fn draw_match_view(
-    ui: &mut egui::Ui,
-    bg: &BgState,
-    config: &Config,
-    open_enc: &mut Option<(String, String)>,
-) {
-    if bg.loading && bg.snapshot.is_none() {
-        ui.centered_and_justified(|ui| {
-            ui.add(egui::Spinner::new().size(36.0));
-        });
-        return;
-    }
-
-    if bg.snapshot.is_none() {
-        ui.centered_and_justified(|ui| {
-            let msg = bg.error.as_deref().unwrap_or("Waiting for match…");
-            ui.label(
-                egui::RichText::new(msg)
-                    .color(egui::Color32::DARK_GRAY)
-                    .size(18.0),
-            );
-        });
-        return;
-    }
-
-    let snap = bg.snapshot.as_ref().unwrap().clone();
-    let players = GuiApp::display_players(&snap);
-    let short = config.display.short_ranks;
-
-    // Column pixel widths
-    const W: [f32; 12] = [
-        44.0, 100.0, 185.0, 110.0, 38.0, 90.0, 45.0, 45.0, 46.0, 38.0, 45.0, 35.0,
-    ];
-
-    egui::ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            egui::Grid::new("match_grid")
-                .num_columns(12)
-                .striped(false)
-                .spacing([5.0, 3.0])
-                .min_col_width(0.0)
-                .show(ui, |ui| {
-                    // ── Column headers ────────────────────────────────────────
-                    for (i, h) in [
-                        "PTY", "AGENT", "NAME", "RANK", "RR", "PEAK", "HS%", "WR%", "K/D", "LVL",
-                        "ΔRR", "MET",
-                    ]
-                    .iter()
-                    .enumerate()
-                    {
-                        ui.add_sized(
-                            [W[i], 16.0],
-                            egui::Label::new(
-                                egui::RichText::new(*h)
-                                    .strong()
-                                    .color(colors::HEADER)
+        // ── Update toast (bottom-right corner) ────────────────────────────────
+        if let Some((msg, _)) = &self.toast {
+            let msg = msg.clone();
+            let screen = ctx.screen_rect();
+            egui::Area::new("update_toast".into())
+                .fixed_pos(egui::pos2(screen.max.x - 360.0, screen.max.y - 52.0))
+                .order(egui::Order::Foreground)
+                .show(ctx, |ui| {
+                    egui::Frame::none()
+                        .fill(egui::Color32::from_rgb(30, 80, 50))
+                        .rounding(6.0)
+                        .inner_margin(egui::Margin::symmetric(12.0, 8.0))
+                        .show(ui, |ui| {
+                            ui.label(
+                                egui::RichText::new(format!("✓ {msg}"))
+                                    .color(egui::Color32::from_rgb(120, 220, 140))
                                     .small(),
-                            ),
-                        );
-                    }
-                    ui.end_row();
-
-                    // Thin separator under headers
-                    for w in &W {
-                        ui.add_sized([*w, 2.0], egui::Separator::default().horizontal());
-                    }
-                    ui.end_row();
-
-                    // ── Player rows ───────────────────────────────────────────
-                    let mut last_ally: Option<bool> = None;
-
-                    for player in players.iter() {
-                        // Team divider
-                        if let Some(la) = last_ally {
-                            if la != player.is_ally {
-                                for w in &W {
-                                    ui.add_sized(
-                                        [*w, 6.0],
-                                        egui::Label::new(
-                                            egui::RichText::new("──────")
-                                                .color(egui::Color32::from_rgb(50, 50, 60)),
-                                        ),
-                                    );
-                                }
-                                ui.end_row();
-                            }
-                        }
-                        last_ally = Some(player.is_ally);
-
-                        // ── Party ─────────────────────────────────────────────
-                        let p_col =
-                            if player.is_enemy_party && config.display.highlight_enemy_parties {
-                                colors::PARTY_ENEMY
-                            } else {
-                                egui::Color32::from_rgb(180, 180, 220)
-                            };
-                        let p_str = if player.party_size > 1 && config.display.show_party_size {
-                            format!("{} ({})", player.party_icon, player.party_size)
-                        } else {
-                            player.party_icon.to_string()
-                        };
-                        ui.add_sized(
-                            [W[0], 20.0],
-                            egui::Label::new(egui::RichText::new(p_str).color(p_col).monospace()),
-                        );
-
-                        // ── Agent ─────────────────────────────────────────────
-                        ui.add_sized(
-                            [W[1], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(&player.agent_name)
-                                    .color(egui::Color32::from_rgb(200, 200, 200)),
-                            ),
-                        );
-
-                        // ── Name (clickable if seen before) ───────────────────
-                        let name_col = if player.is_ally {
-                            colors::ALLY_COLOR
-                        } else {
-                            colors::ENEMY_COLOR
-                        };
-                        let mut name_str = player.display_name().to_owned();
-                        if player.incognito && config.display.show_streamer_tag {
-                            name_str.push_str(" [S]");
-                        }
-
-                        if player.times_seen > 0 {
-                            let lbl = format!("{} 👁", name_str);
-                            let resp = ui
-                                .add_sized(
-                                    [W[2], 20.0],
-                                    egui::Button::new(egui::RichText::new(&lbl).color(name_col))
-                                        .frame(false),
-                                )
-                                .on_hover_text(format!(
-                                    "Seen {} time(s) before — click for history",
-                                    player.times_seen
-                                ));
-                            if resp.clicked() {
-                                *open_enc =
-                                    Some((player.puuid.clone(), player.display_name().to_owned()));
-                            }
-                        } else {
-                            ui.add_sized(
-                                [W[2], 20.0],
-                                egui::Label::new(egui::RichText::new(&name_str).color(name_col)),
                             );
-                        }
-
-                        // ── Rank ──────────────────────────────────────────────
-                        let rank_str = if short {
-                            tier_to_short(player.rank.tier).to_owned()
-                        } else {
-                            tier_to_name(player.rank.tier).to_owned()
-                        };
-                        ui.add_sized(
-                            [W[3], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(rank_str)
-                                    .color(colors::rank_color(player.rank.tier))
-                                    .strong(),
-                            ),
-                        );
-
-                        // ── RR ────────────────────────────────────────────────
-                        ui.add_sized(
-                            [W[4], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(player.rank.rr.to_string())
-                                    .monospace()
-                                    .color(egui::Color32::from_rgb(200, 200, 200)),
-                            ),
-                        );
-
-                        // ── Peak ──────────────────────────────────────────────
-                        let peak_str = if short {
-                            tier_to_short(player.rank.peak_tier).to_owned()
-                        } else {
-                            let n = tier_to_name(player.rank.peak_tier);
-                            if n.len() > 8 {
-                                n[..8].to_owned()
-                            } else {
-                                n.to_owned()
-                            }
-                        };
-                        ui.add_sized(
-                            [W[5], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(peak_str)
-                                    .color(colors::rank_color(player.rank.peak_tier))
-                                    .weak(),
-                            ),
-                        );
-
-                        // ── HS% ───────────────────────────────────────────────
-                        let hs = player.stats.headshot_pct;
-                        let hs_str = if config.display.show_hs {
-                            format!("{:.0}%", hs * 100.0)
-                        } else {
-                            "—".into()
-                        };
-                        ui.add_sized(
-                            [W[6], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(hs_str)
-                                    .monospace()
-                                    .color(colors::hs_color(hs)),
-                            ),
-                        );
-
-                        // ── WR% ───────────────────────────────────────────────
-                        let wr = player.stats.win_rate;
-                        let wr_str = if config.display.show_wr {
-                            format!("{:.0}%", wr * 100.0)
-                        } else {
-                            "—".into()
-                        };
-                        ui.add_sized(
-                            [W[7], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(wr_str)
-                                    .monospace()
-                                    .color(colors::wr_color(wr)),
-                            ),
-                        );
-
-                        // ── K/D ───────────────────────────────────────────────
-                        let kd = player.stats.kd_ratio;
-                        let kd_str = if config.display.show_kd {
-                            format!("{:.2}", kd)
-                        } else {
-                            "—".into()
-                        };
-                        ui.add_sized(
-                            [W[8], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(kd_str)
-                                    .monospace()
-                                    .color(colors::kd_color(kd)),
-                            ),
-                        );
-
-                        // ── Level ─────────────────────────────────────────────
-                        let lvl_str = if config.display.show_level && !player.hide_account_level {
-                            player.account_level.to_string()
-                        } else {
-                            "—".into()
-                        };
-                        ui.add_sized(
-                            [W[9], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(lvl_str).monospace().color(colors::DIM),
-                            ),
-                        );
-
-                        // ── ΔRR ──────────────────────────────────────────────
-                        let rr_d = player.stats.avg_rr_delta;
-                        let rr_str = if config.display.show_rr_delta {
-                            if rr_d > 0.0 {
-                                format!("+{:.0}", rr_d)
-                            } else {
-                                format!("{:.0}", rr_d)
-                            }
-                        } else {
-                            "—".into()
-                        };
-                        ui.add_sized(
-                            [W[10], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(rr_str)
-                                    .monospace()
-                                    .color(colors::rr_delta_color(rr_d)),
-                            ),
-                        );
-
-                        // ── MET ───────────────────────────────────────────────
-                        let met_str = if player.times_seen > 0 {
-                            player.times_seen.to_string()
-                        } else {
-                            "—".into()
-                        };
-                        let met_col = if player.times_seen > 0 {
-                            colors::MET_COLOR
-                        } else {
-                            colors::DIM
-                        };
-                        ui.add_sized(
-                            [W[11], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(met_str).monospace().color(met_col),
-                            ),
-                        );
-
-                        ui.end_row();
-                    }
+                        });
                 });
-        });
-}
-
-// ── History view ──────────────────────────────────────────────────────────────
-
-fn draw_history_view(
-    ui: &mut egui::Ui,
-    history: &mut Vec<SavedMatch>,
-    history_sel: &mut Option<usize>,
-    delete_id: &mut Option<String>,
-) {
-    ui.horizontal(|ui| {
-        ui.label(
-            egui::RichText::new(format!("Match History  ·  {} saved", history.len()))
-                .strong()
-                .color(egui::Color32::from_rgb(100, 180, 255)),
-        );
-    });
-    ui.add_space(4.0);
-
-    if history.is_empty() {
-        ui.centered_and_justified(|ui| {
-            ui.label(
-                egui::RichText::new(
-                    "No saved matches yet.\nSwitch to Live tab and press 💾 Save during a match.",
-                )
-                .color(colors::DIM),
-            );
-        });
-        return;
+        }
     }
-
-    const CW: [f32; 7] = [90.0, 90.0, 115.0, 35.0, 80.0, 50.0, 24.0];
-
-    egui::ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            egui::Grid::new("history_grid")
-                .num_columns(7)
-                .striped(true)
-                .spacing([8.0, 4.0])
-                .min_col_width(0.0)
-                .show(ui, |ui| {
-                    // Header
-                    for (i, h) in ["Date", "Map", "Queue", "W/L", "Rank", "ΔRR", ""]
-                        .iter()
-                        .enumerate()
-                    {
-                        ui.add_sized(
-                            [CW[i], 16.0],
-                            egui::Label::new(
-                                egui::RichText::new(*h)
-                                    .strong()
-                                    .color(colors::HEADER)
-                                    .small(),
-                            ),
-                        );
-                    }
-                    ui.end_row();
-
-                    let now = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs() as i64;
-
-                    let mut idx_to_delete: Option<usize> = None;
-
-                    for (i, m) in history.iter().enumerate() {
-                        let sel = *history_sel == Some(i);
-
-                        let age_days = (now - m.saved_at) / 86400;
-                        let date_str = match age_days {
-                            0 => "Today".to_owned(),
-                            1 => "Yesterday".to_owned(),
-                            d => format!("{d}d ago"),
-                        };
-
-                        let (wl_str, wl_col) = match m.won {
-                            Some(true) => ("W", egui::Color32::from_rgb(80, 220, 100)),
-                            Some(false) => ("L", egui::Color32::from_rgb(220, 80, 80)),
-                            None => ("?", colors::DIM),
-                        };
-
-                        let rr_sign = if m.my_rr_delta >= 0 { "+" } else { "" };
-                        let rr_str = format!("{rr_sign}{}", m.my_rr_delta);
-                        let rr_col = if m.my_rr_delta > 0 {
-                            egui::Color32::from_rgb(80, 220, 100)
-                        } else if m.my_rr_delta < 0 {
-                            egui::Color32::from_rgb(220, 80, 80)
-                        } else {
-                            colors::DIM
-                        };
-
-                        let row_click = |ui: &mut egui::Ui, text: &str, col: egui::Color32| {
-                            ui.add_sized(
-                                [0.0, 20.0], // width set by grid
-                                egui::SelectableLabel::new(
-                                    sel,
-                                    egui::RichText::new(text).color(col),
-                                ),
-                            )
-                            .clicked()
-                        };
-
-                        if row_click(ui, &date_str, colors::DIM) {
-                            *history_sel = Some(i);
-                        }
-                        if row_click(ui, &m.map, egui::Color32::from_rgb(215, 215, 215)) {
-                            *history_sel = Some(i);
-                        }
-                        if row_click(ui, &m.queue, egui::Color32::from_rgb(180, 180, 180)) {
-                            *history_sel = Some(i);
-                        }
-
-                        ui.add_sized(
-                            [CW[3], 20.0],
-                            egui::Label::new(egui::RichText::new(wl_str).color(wl_col).strong()),
-                        );
-                        ui.add_sized(
-                            [CW[4], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(tier_to_short(m.my_rank_tier))
-                                    .color(colors::rank_color(m.my_rank_tier)),
-                            ),
-                        );
-                        ui.add_sized(
-                            [CW[5], 20.0],
-                            egui::Label::new(
-                                egui::RichText::new(&rr_str).monospace().color(rr_col),
-                            ),
-                        );
-
-                        if ui.small_button("🗑").on_hover_text("Delete match").clicked() {
-                            idx_to_delete = Some(i);
-                        }
-                        ui.end_row();
-                    }
-
-                    if let Some(idx) = idx_to_delete {
-                        *delete_id = Some(history[idx].id.clone());
-                    }
-                });
-        });
 }
 
-// ── Encounter side panel ──────────────────────────────────────────────────────
-
-fn draw_encounter_panel(
-    ui: &mut egui::Ui,
-    name: &str,
-    encounters: &[PlayerEncounter],
-    close: &mut bool,
-) {
-    // Title row
-    ui.horizontal(|ui| {
-        ui.label(
-            egui::RichText::new(name)
-                .strong()
-                .size(15.0)
-                .color(egui::Color32::from_rgb(215, 215, 215)),
-        );
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("✕").clicked() {
-                *close = true;
-            }
-        });
-    });
-
-    ui.label(
-        egui::RichText::new(format!("{} encounter(s)", encounters.len()))
-            .color(colors::DIM)
-            .small(),
-    );
-    ui.separator();
-
-    if encounters.is_empty() {
-        ui.label(egui::RichText::new("No encounter data yet.").color(colors::DIM));
-        return;
-    }
-
-    // Summary
-    let summary = valotracker_core::history::summarize_encounters(encounters);
-    let taunt = summary
-        .worst_game
-        .as_ref()
-        .map(|g| g.deaths >= 15 && g.kills <= 8)
-        .unwrap_or(false);
-    let icon = if taunt { "💀" } else { "👀" };
-    let sum_col = if taunt {
-        egui::Color32::from_rgb(220, 80, 80)
-    } else {
-        egui::Color32::from_rgb(180, 180, 180)
-    };
-
-    ui.label(
-        egui::RichText::new(format!(
-            "{icon}  {}-{} W/L  ·  Avg {:.1}K/{:.1}D  ·  HS {:.0}%  ·  Usually {}",
-            summary.wins_against,
-            summary.losses_against,
-            summary.avg_kills,
-            summary.avg_deaths,
-            summary.avg_hs_pct * 100.0,
-            summary.most_played_agent,
-        ))
-        .color(sum_col),
-    );
-
-    ui.separator();
-
-    // Encounter table
-    egui::ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            egui::Grid::new("enc_grid")
-                .num_columns(8)
-                .striped(true)
-                .spacing([8.0, 3.0])
-                .show(ui, |ui| {
-                    for h in ["Date", "Map", "Agent", "K", "D", "A", "HS%", "W/L"] {
-                        ui.label(
-                            egui::RichText::new(h)
-                                .strong()
-                                .color(colors::HEADER)
-                                .small(),
-                        );
-                    }
-                    ui.end_row();
-
-                    let now = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs() as i64;
-
-                    for enc in encounters {
-                        let age = (now - enc.saved_at) / 86400;
-                        let date_str = match age {
-                            0 => "Today".to_owned(),
-                            1 => "Yesterday".to_owned(),
-                            d => format!("{d}d ago"),
-                        };
-
-                        let (wl_str, wl_col) = match enc.won {
-                            Some(true) => ("W", egui::Color32::from_rgb(80, 220, 100)),
-                            Some(false) => ("L", egui::Color32::from_rgb(220, 80, 80)),
-                            None => ("?", colors::DIM),
-                        };
-
-                        let side = if enc.was_enemy { "⚔" } else { "✦" };
-
-                        ui.label(egui::RichText::new(&date_str).color(colors::DIM).small());
-                        ui.label(egui::RichText::new(format!("{} {}", &enc.map, side)).small());
-                        ui.label(egui::RichText::new(&enc.agent).small());
-                        ui.label(
-                            egui::RichText::new(enc.kills.to_string())
-                                .color(egui::Color32::from_rgb(80, 220, 100))
-                                .monospace()
-                                .small(),
-                        );
-                        ui.label(
-                            egui::RichText::new(enc.deaths.to_string())
-                                .color(egui::Color32::from_rgb(220, 80, 80))
-                                .monospace()
-                                .small(),
-                        );
-                        ui.label(
-                            egui::RichText::new(enc.assists.to_string())
-                                .color(colors::DIM)
-                                .monospace()
-                                .small(),
-                        );
-                        ui.label(
-                            egui::RichText::new(format!("{:.0}%", enc.hs_pct * 100.0))
-                                .color(colors::hs_color(enc.hs_pct))
-                                .monospace()
-                                .small(),
-                        );
-                        ui.label(egui::RichText::new(wl_str).color(wl_col).strong().small());
-                        ui.end_row();
-                    }
-                });
-        });
-}
 
 // ── Tray icon builder ─────────────────────────────────────────────────────────
 
@@ -1158,72 +632,4 @@ fn build_tray() -> Option<TrayState> {
         show_id,
         quit_id,
     })
-}
-
-// ── Settings modal ────────────────────────────────────────────────────────────
-
-/// Draw the settings window. Returns a status message string if something
-/// noteworthy happened (e.g. registry write failed).
-fn draw_settings_modal(
-    ctx: &egui::Context,
-    config: &mut valotracker_core::Config,
-    open: &mut bool,
-) -> Option<String> {
-    let mut status: Option<String> = None;
-
-    egui::Window::new("⚙  Settings")
-        .collapsible(false)
-        .resizable(false)
-        .min_width(340.0)
-        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-        .open(open)
-        .show(ctx, |ui| {
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new("Window").strong().color(colors::HEADER));
-            ui.separator();
-
-            let mut changed = false;
-
-            if ui
-                .checkbox(
-                    &mut config.features.minimize_to_tray,
-                    "Minimize to tray when window is closed",
-                )
-                .changed()
-            {
-                changed = true;
-            }
-
-            ui.add_space(2.0);
-
-            if ui
-                .checkbox(
-                    &mut config.features.run_on_startup,
-                    "Launch ValoTracker when Windows starts",
-                )
-                .on_hover_text("Adds an entry to HKCU\\...\\Run in the Windows registry")
-                .changed()
-            {
-                changed = true;
-                if let Err(e) = crate::startup::set_run_on_startup(config.features.run_on_startup) {
-                    status = Some(format!("Startup registry error: {e}"));
-                }
-            }
-
-            if changed {
-                if let Err(e) = config.save() {
-                    status = Some(format!("Config save failed: {e}"));
-                }
-            }
-
-            ui.add_space(8.0);
-            ui.separator();
-            ui.label(
-                egui::RichText::new("Changes are saved automatically.")
-                    .small()
-                    .color(colors::DIM),
-            );
-        });
-
-    status
 }

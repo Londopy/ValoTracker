@@ -19,9 +19,15 @@ ValoTracker reads from VALORANT's own local client API (no login required, no th
 | **Encounter tracking** | See every previous saved match against a specific player ("Receipts") |
 | **Extended analytics** | Agent stats, map stats, smurf flagging, session tracking, nemesis leaderboard |
 | **TUI + GUI** | Rich terminal UI by default; optional native egui window |
+| **Idle waiting screen** | Animated "Waiting for VALORANT…" screen; auto-transitions when a match is detected |
+| **Auto-updater** | Silent background update check on startup; installs in-place, notifies on completion |
+| **Windows notifications** | Desktop toast notifications for match detection and updates; opt-out via config |
+| **Discord Rich Presence** | Shows map, mode, party size, and elapsed time in Discord; opt-in via config |
 | **Minimize to tray** | GUI hides to the system tray on close — double-click to restore |
 | **Run on startup** | Optionally launch at Windows login, starting hidden in the tray |
-| **Python bindings** | `pip install ValoTracker` exposes the engine via PyO3 |
+| **MSI installer** | Per-user MSI built with cargo-wix — no UAC prompt required |
+| **Scoop bucket** | `scoop install valotracker` with auto-update support |
+| **Python bindings + CLI** | `pip install valotracker` · `valotracker` and `valotracker-gui` console scripts |
 
 ---
 
@@ -31,9 +37,11 @@ Download the latest installer from the [Releases page](https://github.com/Londop
 
 | Download | Description |
 |---|---|
-| `ValoTracker-Setup-x.x.x.exe` | **Installer (recommended)** — wizard with component selection and shortcuts |
+| `ValoTracker-x.x.x-x86_64.msi` | **MSI installer (recommended)** — per-user, no UAC, component selection |
+| `ValoTracker-Setup-x.x.x.exe` | Classic installer wizard with shortcuts |
 | `ValoTracker.exe` | Portable terminal (TUI) — drop anywhere and run |
 | `ValoTracker-gui.exe` | Portable desktop window (GUI) — drop anywhere and run |
+| `valotracker-x.x.x-py3-none-win_amd64.whl` | Python wheel — `pip install` and use `valotracker` CLI |
 
 Run the installer, launch VALORANT, queue up, and open ValoTracker once you're in agent select.
 

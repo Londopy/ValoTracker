@@ -1,0 +1,7 @@
+# This directory holds the pre-compiled ValoTracker binaries bundled into the wheel.
+# The actual .exe files are copied here by the CI pipeline (release.yml) before
+# building the wheel — they are NOT committed to the repository.
+#
+# Files placed here by CI:
+#   ValoTracker.exe      — terminal UI (TUI)
+#   ValoTracker-gui.exe  — desktop GUI

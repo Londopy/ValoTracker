@@ -26,13 +26,14 @@ AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
 
-; Install to Program Files\ValoTracker by default
-DefaultDirName={autopf}\{#AppName}
+; Install per-user to %LOCALAPPDATA%\ValoTracker — no UAC prompt required
+DefaultDirName={localappdata}\{#AppName}
 DefaultGroupName={#AppName}
 AllowNoIcons=yes
 
-; Require admin rights to write to Program Files
-PrivilegesRequired=admin
+; Per-user install — no elevation required
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=commandline
 
 ; License shown on the second wizard page
 LicenseFile=LICENSE.txt

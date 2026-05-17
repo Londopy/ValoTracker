@@ -15,6 +15,8 @@ mod app;
 mod colors;
 #[cfg(feature = "gui")]
 mod startup;
+#[cfg(feature = "gui")]
+mod views;
 
 #[cfg(feature = "gui")]
 fn run() {

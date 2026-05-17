@@ -1,0 +1,15 @@
+# MANIFEST.in — controls what is included in the source distribution (sdist)
+# The wheel includes everything in package_data; this file covers sdist extras.
+
+# Include the pre-compiled Rust extension (.pyd) and debug symbols (.pdb)
+recursive-include valotracker *.pyd *.pdb
+
+# Include the bundled Windows binaries
+recursive-include valotracker/bin *.exe
+
+# Include test suite
+recursive-include tests *.py
+
+# Include metadata files
+include README.md
+include LICENSE

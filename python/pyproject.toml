@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "valotracker"
+version = "3.0.0"
+description = "Privacy-first Valorant match tracker — Python bindings and CLI launchers"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["valorant", "tracker", "esports", "gaming"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Games/Entertainment",
+]
+
+[project.urls]
+Homepage   = "https://github.com/Londopy/ValoTracker"
+Repository = "https://github.com/Londopy/ValoTracker"
+Issues     = "https://github.com/Londopy/ValoTracker/issues"
+Releases   = "https://github.com/Londopy/ValoTracker/releases"
+
+# ── Console scripts (entry points) ───────────────────────────────────────────
+[project.scripts]
+valotracker     = "valotracker.launcher:run_tui"
+valotracker-gui = "valotracker.launcher:run_gui"
+
+# ── Package data ─────────────────────────────────────────────────────────────
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["valotracker*"]
+
+[tool.setuptools.package-data]
+valotracker = [
+    "*.pyd",
+    "*.pdb",
+    "bin/*.exe",
+]
+
+# ── Wheel tag: Windows 64-bit only ───────────────────────────────────────────
+[tool.setuptools]
+platforms = ["win32"]
+
+# Force win_amd64 tag when building the wheel.
+# Run: pip wheel . --no-deps -w dist/ --plat-name win_amd64

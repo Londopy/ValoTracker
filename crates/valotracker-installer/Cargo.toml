@@ -1,0 +1,17 @@
+[package]
+name = "valotracker-installer"
+version = "3.0.0"
+edition = "2021"
+description = "ValoTracker MSI installer crate (cargo-wix)"
+publish = false
+
+# This crate has no runtime code — it exists solely as the cargo-wix target.
+# Build the MSI with:
+#   cargo wix -p valotracker-installer --no-build --nocapture
+
+# Paths to the pre-built binaries (resolved relative to workspace root by CI).
+# Override with environment variables WIX_TUI_PATH and WIX_GUI_PATH in CI.
+[package.metadata.wix]
+# The WiX descriptor lives at wix/main.wxs (cargo-wix convention)
+name = "ValoTracker"
+version = "3.0.0"

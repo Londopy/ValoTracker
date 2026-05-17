@@ -5,6 +5,7 @@ members = [
     "crates/valotracker-tui",
     "crates/valotracker-gui",
     "crates/valotracker-py",
+    "crates/valotracker-installer",
 ]
 
 [workspace.dependencies]
@@ -16,3 +17,4 @@ thiserror   = "1"
 anyhow      = "1"
 base64      = "0.22"
 tracing     = "0.1"
+sha2        = "0.10"

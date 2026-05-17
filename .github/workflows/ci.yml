@@ -33,14 +33,18 @@ jobs:
       - name: cargo check (TUI)
         run: cargo check -p valotracker-tui
 
-      - name: cargo check (GUI)
+      # --features gui enables eframe/egui/tray-icon; discord is always on
+      # via valotracker-core's hard dependency declaration in valotracker-gui.
+      - name: cargo check (GUI + discord)
         run: cargo check -p valotracker-gui --features gui
 
       - name: cargo check (py bindings)
         run: cargo check -p valotracker-py
 
-      - name: cargo clippy (all)
-        run: cargo clippy --workspace -- -D warnings
+      # Exclude valotracker-installer from clippy — it has no Rust code and
+      # cargo-wix is not installed on the CI check runner.
+      - name: cargo clippy (workspace)
+        run: cargo clippy --workspace --exclude valotracker-installer -- -D warnings
 
       - name: cargo fmt check
         run: cargo fmt --all -- --check

@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ValoTracker MSI installer — built with cargo-wix.
+
+  Build locally:
+    cargo wix -p valotracker-installer --no-build --nocapture
+
+  CI passes pre-built binaries via WIX_* env vars; see release.yml.
+
+  Design decisions:
+  • Per-user install to %LOCALAPPDATA%\ValoTracker — no UAC prompt.
+  • WixUI_FeatureTree gives the user a "Customize" component page.
+  • ValoTracker.exe (TUI) is required.
+  • ValoTracker-gui.exe (GUI) is optional, on by default.
+  • Start Menu shortcuts always installed for selected features.
+  • Desktop shortcuts are a separate optional feature, off by default.
+-->
+<?if $(sys.BUILDARCH) = x64 ?>
+  <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+<?else?>
+  <?error Only x64 builds are supported ?>
+<?endif?>
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/2008/Util">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Product declaration
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <Product
+    Id="*"
+    Name="ValoTracker"
+    Language="1033"
+    Version="!(bind.FileVersion.ValoTrackerTuiExe)"
+    Manufacturer="Londopy"
+    UpgradeCode="3B4C2D1A-7F6E-4A5B-8C9D-0E1F2A3B4C5D">
+
+    <Package
+      Description="ValoTracker — Real-time VALORANT match tracker"
+      Comments="Privacy-first Valorant tracker. No login required."
+      Manufacturer="Londopy"
+      InstallerVersion="500"
+      InstallScope="perUser"
+      Compressed="yes"
+      Platform="x64" />
+
+    <!-- Per-user install: write to HKCU, install to %LOCALAPPDATA% -->
+    <Property Id="MSIINSTALLPERUSER" Value="1" />
+    <Property Id="ALLUSERS" Value="2" />
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of ValoTracker is already installed." />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- ── UI ─────────────────────────────────────────────────────────────── -->
+    <UIRef Id="WixUI_FeatureTree" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+
+    <!-- Skip the license dialog (open-source MIT — no click-through required) -->
+    <WixVariable Id="WixUILicenseRtf" Value="wix\License.rtf" />
+
+    <!-- Banner and dialog bitmaps (optional; WiX ships defaults) -->
+    <!-- <WixVariable Id="WixUIBannerBmp"  Value="wix\Banner.bmp"  /> -->
+    <!-- <WixVariable Id="WixUIDialogBmp"  Value="wix\Dialog.bmp"  /> -->
+
+    <!-- ── Install directory ─────────────────────────────────────────────── -->
+    <!--
+      TARGETDIR → LocalAppDataFolder → ValoTrackerDir
+      Resolves to %LOCALAPPDATA%\ValoTracker
+    -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="ValoTrackerDir" Name="ValoTracker">
+
+          <!-- ── TUI binary ───────────────────────────────────────────────── -->
+          <Component Id="CompTui" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
+            <File Id="ValoTrackerTuiExe"
+                  Name="ValoTracker.exe"
+                  Source="$(var.TuiBinPath)"
+                  KeyPath="yes" />
+          </Component>
+
+          <!-- ── GUI binary ───────────────────────────────────────────────── -->
+          <Component Id="CompGui" Guid="B2C3D4E5-F6A7-8901-BCDE-F12345678901">
+            <File Id="ValoTrackerGuiExe"
+                  Name="ValoTracker-gui.exe"
+                  Source="$(var.GuiBinPath)"
+                  KeyPath="yes" />
+          </Component>
+
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <!-- ── Start Menu shortcuts directory ───────────────────────────────── -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ValoTrackerMenuDir" Name="ValoTracker" />
+      </Directory>
+      <Directory Id="DesktopFolder" Name="Desktop" />
+    </Directory>
+
+    <!-- ── Start Menu shortcuts ─────────────────────────────────────────── -->
+    <DirectoryRef Id="ValoTrackerMenuDir">
+
+      <Component Id="CompStartMenuTui"
+                 Guid="C3D4E5F6-A7B8-9012-CDEF-123456789012">
+        <Shortcut Id="StartMenuTui"
+                  Name="ValoTracker (Terminal)"
+                  Description="Real-time VALORANT match tracker — terminal UI"
+                  Target="[ValoTrackerDir]ValoTracker.exe"
+                  WorkingDirectory="ValoTrackerDir" />
+        <RemoveFolder Id="RemoveMenuTui" On="uninstall" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\ValoTracker\TUI"
+                       Name="StartMenuInstalled"
+                       Type="integer" Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+      <Component Id="CompStartMenuGui"
+                 Guid="D4E5F6A7-B8C9-0123-DEF0-234567890123">
+        <Shortcut Id="StartMenuGui"
+                  Name="ValoTracker GUI"
+                  Description="Real-time VALORANT match tracker — desktop window"
+                  Target="[ValoTrackerDir]ValoTracker-gui.exe"
+                  WorkingDirectory="ValoTrackerDir" />
+        <RemoveFolder Id="RemoveMenuGui" On="uninstall" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\ValoTracker\GUI"
+                       Name="StartMenuInstalled"
+                       Type="integer" Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+    </DirectoryRef>
+
+    <!-- ── Desktop shortcuts (off by default) ───────────────────────────── -->
+    <DirectoryRef Id="DesktopFolder">
+
+      <Component Id="CompDesktopTui"
+                 Guid="E5F6A7B8-C9D0-1234-EF01-345678901234">
+        <Shortcut Id="DesktopTui"
+                  Name="ValoTracker"
+                  Description="Real-time VALORANT match tracker"
+                  Target="[ValoTrackerDir]ValoTracker.exe"
+                  WorkingDirectory="ValoTrackerDir" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\ValoTracker\TUI"
+                       Name="DesktopInstalled"
+                       Type="integer" Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+      <Component Id="CompDesktopGui"
+                 Guid="F6A7B8C9-D0E1-2345-F012-456789012345">
+        <Shortcut Id="DesktopGui"
+                  Name="ValoTracker GUI"
+                  Description="Real-time VALORANT match tracker — desktop window"
+                  Target="[ValoTrackerDir]ValoTracker-gui.exe"
+                  WorkingDirectory="ValoTrackerDir" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\ValoTracker\GUI"
+                       Name="DesktopInstalled"
+                       Type="integer" Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+    </DirectoryRef>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         Feature tree
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <Feature Id="FeatureComplete"
+             Title="ValoTracker"
+             Description="All ValoTracker components."
+             Level="1"
+             ConfigurableDirectory="ValoTrackerDir"
+             Display="expand"
+             AllowAdvertise="no"
+             InstallDefault="local">
+
+      <!-- TUI — required, always installed -->
+      <Feature Id="FeatureTui"
+               Title="ValoTracker (Terminal UI)"
+               Description="Lightweight terminal interface. Runs anywhere — no GPU required."
+               Level="1"
+               AllowAdvertise="no"
+               Absent="disallow">
+        <ComponentRef Id="CompTui" />
+        <ComponentRef Id="CompStartMenuTui" />
+      </Feature>
+
+      <!-- GUI — optional, on by default -->
+      <Feature Id="FeatureGui"
+               Title="ValoTracker GUI"
+               Description="Native desktop window (egui). Includes system tray integration."
+               Level="1"
+               AllowAdvertise="no">
+        <ComponentRef Id="CompGui" />
+        <ComponentRef Id="CompStartMenuGui" />
+      </Feature>
+
+      <!-- Desktop shortcuts — optional, on by default -->
+      <Feature Id="FeatureDesktopShortcuts"
+               Title="Desktop shortcuts"
+               Description="Add shortcuts to the Desktop for the components you install."
+               Level="1"
+               AllowAdvertise="no">
+        <ComponentRef Id="CompDesktopTui" />
+        <ComponentRef Id="CompDesktopGui" />
+      </Feature>
+
+    </Feature>
+
+  </Product>
+</Wix>
