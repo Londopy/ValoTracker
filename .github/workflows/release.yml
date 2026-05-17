@@ -87,15 +87,11 @@ jobs:
       - name: Build MSI (cargo-wix)
         shell: pwsh
         env:
-          # Pass pre-built binary paths to the WiX descriptor via variables
+          # WiX reads these at candle time via $(env.WixTuiBinPath) / $(env.WixGuiBinPath)
           WixTuiBinPath: ${{ github.workspace }}\target\release\valotracker.exe
           WixGuiBinPath: ${{ github.workspace }}\target\release\valotracker-gui.exe
         run: |
-          cargo wix -p valotracker-installer `
-            --no-build `
-            --nocapture `
-            --define TuiBinPath="$env:WixTuiBinPath" `
-            --define GuiBinPath="$env:WixGuiBinPath"
+          cargo wix -p valotracker-installer --no-build --nocapture
           # Rename to versioned filename
           $msi = Get-ChildItem target\wix\*.msi | Select-Object -First 1
           $dest = "dist\ValoTracker-$env:VERSION-x86_64.msi"
