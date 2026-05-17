@@ -19,6 +19,8 @@ ValoTracker reads from VALORANT's own local client API (no login required, no th
 | **Encounter tracking** | See every previous saved match against a specific player ("Receipts") |
 | **Extended analytics** | Agent stats, map stats, smurf flagging, session tracking, nemesis leaderboard |
 | **TUI + GUI** | Rich terminal UI by default; optional native egui window |
+| **Minimize to tray** | GUI hides to the system tray on close — double-click to restore |
+| **Run on startup** | Optionally launch at Windows login, starting hidden in the tray |
 | **Python bindings** | `pip install ValoTracker` exposes the engine via PyO3 |
 
 ---

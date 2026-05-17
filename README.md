@@ -22,6 +22,10 @@ A fast, privacy-first Valorant match tracker written in Rust.
   win-rate breakdown, session tracking, nemesis/rivalry leaderboard
 - **TUI + optional GUI** — rich terminal UI by default; build with
   `--features gui` for a native egui window
+- **Minimize to tray** — GUI can hide to the system tray instead of closing;
+  double-click the tray icon to restore
+- **Run on startup** — optionally launch ValoTracker automatically when Windows
+  starts (hidden in tray until needed)
 - **Python bindings** — `pip install ValoTracker` exposes the engine to Python via PyO3
 
 ---
@@ -156,6 +160,8 @@ discord_rpc                = false
 gui                        = false
 smurf_flag_threshold_tiers = 8
 smurf_flag_threshold_days  = 30
+minimize_to_tray           = false
+run_on_startup             = false
 ```
 
 You can also edit all display toggles live from within the TUI by pressing
