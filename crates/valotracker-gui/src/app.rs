@@ -205,7 +205,7 @@ impl GuiApp {
             self.set_status("No match to save");
             return;
         };
-        let Some(db_arc) = &self.history_db else {
+        let Some(db_arc) = self.history_db.clone() else {
             self.set_status("DB unavailable");
             return;
         };
