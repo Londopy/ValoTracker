@@ -44,8 +44,6 @@ pub(crate) struct BgState {
     pub(crate) last_refresh: Option<Instant>,
     /// True once VALORANT has been detected at least once (lockfile found).
     pub(crate) valorant_detected: bool,
-    /// Pending update notification from the auto-updater.
-    pub(crate) update_notice: Option<String>,
 }
 
 impl Default for BgState {
@@ -57,7 +55,6 @@ impl Default for BgState {
             load_duration: None,
             last_refresh: None,
             valorant_detected: false,
-            update_notice: None,
         }
     }
 }
