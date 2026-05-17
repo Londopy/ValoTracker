@@ -72,12 +72,18 @@ smurf_flag_threshold_days    = 30
 | `gui` | bool | `false` | Launch the egui GUI window instead of the TUI on startup |
 | `smurf_flag_threshold_tiers` | int | `8` | Flag a player as a potential smurf if they climbed this many rank tiers… |
 | `smurf_flag_threshold_days` | int | `30` | …within this many days. Players meeting both thresholds get a smurf indicator. |
+| `minimize_to_tray` | bool | `false` | **GUI only.** Hide the window to the system tray when you click the close button. Double-click the tray icon to restore, or right-click for Open / Quit. |
+| `run_on_startup` | bool | `false` | **GUI only.** Add ValoTracker to the Windows startup registry (`HKCU\...\Run`) so it launches automatically at login. Starts hidden in the tray. |
 
 ---
 
 ## Live Config Editor (TUI)
 
 Press `c` while ValoTracker is running to open the built-in config editor. Toggle any display option on or off and the table updates immediately — no restart required. Changes are saved to `config.toml` automatically when you exit the editor.
+
+## Settings Panel (GUI)
+
+Click the **⚙** button in the top-right corner of the GUI window to open the Settings panel. From here you can toggle **Minimize to tray** and **Run on startup** with checkboxes — changes are written to `config.toml` and (for startup) the Windows registry immediately.
 
 ---
 
@@ -86,3 +92,4 @@ Press `c` while ValoTracker is running to open the built-in config editor. Toggl
 - **Hide columns you don't care about** — set `show_kd`, `show_hs`, etc. to `false` for a more compact table.
 - **Smurf detection** — the defaults (`8` tiers in `30` days) flag someone who went from, say, Silver to Diamond in a month. Tune these to be more or less aggressive.
 - **Short ranks** — useful if you have a narrow terminal; `D2 100RR` takes less space than `Diamond 2 100RR`.
+- **Tray + startup combo** — enable both `minimize_to_tray` and `run_on_startup` so ValoTracker is always running quietly in the background and ready the moment you queue.
