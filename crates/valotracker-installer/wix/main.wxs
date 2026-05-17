@@ -66,12 +66,12 @@
 
     <!-- ── Install directory ─────────────────────────────────────────────── -->
     <!--
-      TARGETDIR → LocalAppDataFolder → ValoTrackerDir
+      TARGETDIR → LocalAppDataFolder → INSTALLFOLDER
       Resolves to %LOCALAPPDATA%\ValoTracker
     -->
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="LocalAppDataFolder">
-        <Directory Id="ValoTrackerDir" Name="ValoTracker">
+        <Directory Id="INSTALLFOLDER" Name="ValoTracker">
 
           <!-- ── TUI binary ───────────────────────────────────────────────── -->
           <Component Id="CompTui" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
@@ -91,10 +91,8 @@
 
         </Directory>
       </Directory>
-    </Directory>
 
-    <!-- ── Start Menu shortcuts directory ───────────────────────────────── -->
-    <Directory Id="TARGETDIR" Name="SourceDir">
+      <!-- ── Start Menu and Desktop shortcut directories ───────────────────── -->
       <Directory Id="ProgramMenuFolder">
         <Directory Id="ValoTrackerMenuDir" Name="ValoTracker" />
       </Directory>
@@ -109,8 +107,8 @@
         <Shortcut Id="StartMenuTui"
                   Name="ValoTracker (Terminal)"
                   Description="Real-time VALORANT match tracker — terminal UI"
-                  Target="[ValoTrackerDir]ValoTracker.exe"
-                  WorkingDirectory="ValoTrackerDir" />
+                  Target="[INSTALLFOLDER]ValoTracker.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="RemoveMenuTui" On="uninstall" />
         <RegistryValue Root="HKCU"
                        Key="Software\ValoTracker\TUI"
@@ -124,8 +122,8 @@
         <Shortcut Id="StartMenuGui"
                   Name="ValoTracker GUI"
                   Description="Real-time VALORANT match tracker — desktop window"
-                  Target="[ValoTrackerDir]ValoTracker-gui.exe"
-                  WorkingDirectory="ValoTrackerDir" />
+                  Target="[INSTALLFOLDER]ValoTracker-gui.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="RemoveMenuGui" On="uninstall" />
         <RegistryValue Root="HKCU"
                        Key="Software\ValoTracker\GUI"
@@ -144,8 +142,8 @@
         <Shortcut Id="DesktopTui"
                   Name="ValoTracker"
                   Description="Real-time VALORANT match tracker"
-                  Target="[ValoTrackerDir]ValoTracker.exe"
-                  WorkingDirectory="ValoTrackerDir" />
+                  Target="[INSTALLFOLDER]ValoTracker.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
         <RegistryValue Root="HKCU"
                        Key="Software\ValoTracker\TUI"
                        Name="DesktopInstalled"
@@ -158,8 +156,8 @@
         <Shortcut Id="DesktopGui"
                   Name="ValoTracker GUI"
                   Description="Real-time VALORANT match tracker — desktop window"
-                  Target="[ValoTrackerDir]ValoTracker-gui.exe"
-                  WorkingDirectory="ValoTrackerDir" />
+                  Target="[INSTALLFOLDER]ValoTracker-gui.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
         <RegistryValue Root="HKCU"
                        Key="Software\ValoTracker\GUI"
                        Name="DesktopInstalled"
@@ -176,7 +174,7 @@
              Title="ValoTracker"
              Description="All ValoTracker components."
              Level="1"
-             ConfigurableDirectory="ValoTrackerDir"
+             ConfigurableDirectory="INSTALLFOLDER"
              Display="expand"
              AllowAdvertise="no"
              InstallDefault="local">
