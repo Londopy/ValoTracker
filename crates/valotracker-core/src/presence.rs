@@ -162,7 +162,8 @@ fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
 /// `/Game/Maps/Triad/Triad`   → `"Triad"` (Haven's internal name)
 /// `""`                       → `"Unknown Map"`
 fn map_path_to_name(path: &str) -> String {
-    path.split('/').rfind(|s| !s.is_empty())
+    path.split('/')
+        .rfind(|s| !s.is_empty())
         .map(|s| s.to_owned())
         .unwrap_or_else(|| "Unknown Map".to_owned())
 }

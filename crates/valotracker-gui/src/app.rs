@@ -325,10 +325,7 @@ fn bg_thread(
             ctx.request_repaint();
 
             let t0 = Instant::now();
-            match engine
-                .build_snapshot()
-                .await
-            {
+            match engine.build_snapshot().await {
                 Ok(snap) => {
                     let player_count = snap.players.len();
                     let map_name = snap.map_name.clone();
