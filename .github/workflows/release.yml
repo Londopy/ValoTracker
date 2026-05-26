@@ -125,6 +125,8 @@ jobs:
           New-Item -ItemType Directory -Force -Path $binDir | Out-Null
           Copy-Item "target\release\valotracker.exe"     "$binDir\ValoTracker.exe"
           Copy-Item "target\release\valotracker-gui.exe" "$binDir\ValoTracker-gui.exe"
+          # Keep README in sync so PyPI renders it correctly
+          Copy-Item "README.md" "python\README.md" -Force
 
       # ── Set up Python ─────────────────────────────────────────────────────────
       - name: Set up Python

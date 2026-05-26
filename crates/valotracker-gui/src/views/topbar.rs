@@ -34,7 +34,8 @@ pub fn draw_topbar(
             ui.label(egui::RichText::new(&snap.map_name).strong());
             ui.separator();
             ui.label(
-                egui::RichText::new(&snap.queue_id).color(egui::Color32::from_rgb(180, 180, 180)),
+                egui::RichText::new(format_queue(&snap.queue_id))
+                    .color(egui::Color32::from_rgb(180, 180, 180)),
             );
             if !snap.server.is_empty() {
                 ui.separator();
@@ -90,6 +91,22 @@ pub fn draw_topbar(
             }
         });
     });
+}
+
+fn format_queue(queue_id: &str) -> &str {
+    match queue_id {
+        "competitive"  => "Competitive",
+        "unrated"      => "Unrated",
+        "spikerush"    => "Spike Rush",
+        "deathmatch"   => "Deathmatch",
+        "ggteam"       => "Escalation",
+        "onefa"        => "Replication",
+        "snowball"     => "Snowball Fight",
+        "swiftplay"    => "Swiftplay",
+        "custom"       => "Custom Game",
+        "unknown"      => "—",
+        other          => other,
+    }
 }
 
 /// Draw the slim status bar at the bottom of the window.

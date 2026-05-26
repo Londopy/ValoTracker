@@ -126,7 +126,7 @@ impl App {
         let start = Instant::now();
 
         match engine
-            .build_snapshot("Unknown Map".to_owned(), "competitive".to_owned())
+            .build_snapshot()
             .await
         {
             Ok(snap) => {
