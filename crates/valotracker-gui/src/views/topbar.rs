@@ -95,17 +95,17 @@ pub fn draw_topbar(
 
 fn format_queue(queue_id: &str) -> &str {
     match queue_id {
-        "competitive"  => "Competitive",
-        "unrated"      => "Unrated",
-        "spikerush"    => "Spike Rush",
-        "deathmatch"   => "Deathmatch",
-        "ggteam"       => "Escalation",
-        "onefa"        => "Replication",
-        "snowball"     => "Snowball Fight",
-        "swiftplay"    => "Swiftplay",
-        "custom"       => "Custom Game",
-        "unknown"      => "—",
-        other          => other,
+        "competitive" => "Competitive",
+        "unrated" => "Unrated",
+        "spikerush" => "Spike Rush",
+        "deathmatch" => "Deathmatch",
+        "ggteam" => "Escalation",
+        "onefa" => "Replication",
+        "snowball" => "Snowball Fight",
+        "swiftplay" => "Swiftplay",
+        "custom" => "Custom Game",
+        "unknown" => "—",
+        other => other,
     }
 }
 

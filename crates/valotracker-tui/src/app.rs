@@ -125,10 +125,7 @@ impl App {
         self.is_loading = true;
         let start = Instant::now();
 
-        match engine
-            .build_snapshot()
-            .await
-        {
+        match engine.build_snapshot().await {
             Ok(snap) => {
                 self.snapshot = Some(snap);
                 self.load_error = None;
