@@ -150,10 +150,52 @@ pub fn get_match_meta(presences: &[PlayerPresence], puuid: &str) -> (String, Str
 
 // ── Private helpers ──────────────────────────────────────────────────────────
 
+/// Decode the base64 presence blob into a [`PresencePrivate`].
+///
+/// We parse as a raw [`serde_json::Value`] first so that a type mismatch on
+/// any single field (Riot has changed the schema across patches) does **not**
+/// silently discard the entire blob.  Each field is then pulled out
+/// individually with a safe fallback.
 fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
     let bytes = base64::engine::general_purpose::STANDARD.decode(b64)?;
     let decoded = String::from_utf8(bytes)?;
-    Ok(serde_json::from_str(&decoded)?)
+
+    // Try a clean struct deserialise first — this is the fast path and works
+    // on all known Valorant builds.
+    if let Ok(p) = serde_json::from_str::<PresencePrivate>(&decoded) {
+        return Ok(p);
+    }
+
+    // Fallback: parse as a generic Value and extract only what we need so
+    // that an unexpected type on any other field cannot kill game detection.
+    let v: serde_json::Value = serde_json::from_str(&decoded)?;
+    let str_field = |key: &str| -> String {
+        v.get(key)
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_owned()
+    };
+    let u8_field = |key: &str| -> u8 {
+        v.get(key)
+            .and_then(|x| x.as_u64())
+            .unwrap_or(0)
+            .min(255) as u8
+    };
+
+    Ok(PresencePrivate {
+        session_loop_state: str_field("sessionLoopState"),
+        party_id: str_field("partyId"),
+        party_size: u8_field("partySize"),
+        party_max_size: u8_field("partyMaxSize"),
+        queue_id: str_field("queueId"),
+        party_state: str_field("partyState"),
+        provisioning_flow: str_field("provisioningFlow"),
+        is_valid: v
+            .get("isValid")
+            .and_then(|x| x.as_bool())
+            .unwrap_or(false),
+        match_map: str_field("matchMap"),
+    })
 }
 
 /// Convert a Valorant map asset path to a display name.
