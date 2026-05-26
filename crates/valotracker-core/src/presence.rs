@@ -169,18 +169,10 @@ fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
     // Fallback: parse as a generic Value and extract only what we need so
     // that an unexpected type on any other field cannot kill game detection.
     let v: serde_json::Value = serde_json::from_str(&decoded)?;
-    let str_field = |key: &str| -> String {
-        v.get(key)
-            .and_then(|x| x.as_str())
-            .unwrap_or("")
-            .to_owned()
-    };
-    let u8_field = |key: &str| -> u8 {
-        v.get(key)
-            .and_then(|x| x.as_u64())
-            .unwrap_or(0)
-            .min(255) as u8
-    };
+    let str_field =
+        |key: &str| -> String { v.get(key).and_then(|x| x.as_str()).unwrap_or("").to_owned() };
+    let u8_field =
+        |key: &str| -> u8 { v.get(key).and_then(|x| x.as_u64()).unwrap_or(0).min(255) as u8 };
 
     Ok(PresencePrivate {
         session_loop_state: str_field("sessionLoopState"),
@@ -190,10 +182,7 @@ fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
         queue_id: str_field("queueId"),
         party_state: str_field("partyState"),
         provisioning_flow: str_field("provisioningFlow"),
-        is_valid: v
-            .get("isValid")
-            .and_then(|x| x.as_bool())
-            .unwrap_or(false),
+        is_valid: v.get("isValid").and_then(|x| x.as_bool()).unwrap_or(false),
         match_map: str_field("matchMap"),
     })
 }
