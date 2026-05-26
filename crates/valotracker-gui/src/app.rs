@@ -326,7 +326,7 @@ fn bg_thread(
 
             let t0 = Instant::now();
             match engine
-                .build_snapshot("Unknown Map".to_owned(), "competitive".to_owned())
+                .build_snapshot()
                 .await
             {
                 Ok(snap) => {

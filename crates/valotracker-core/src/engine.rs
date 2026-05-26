@@ -49,15 +49,15 @@ impl Engine {
 
     /// Build a full [`MatchSnapshot`] for the current match.
     ///
-    /// Works for both Pregame and Ingame states.
-    pub async fn build_snapshot(
-        &mut self,
-        map_name: String,
-        queue_id: String,
-    ) -> Result<MatchSnapshot, ValoTrackerError> {
-        // 1. Determine game state
+    /// Works for both Pregame and Ingame states.  The queue ID and map name
+    /// are read from the player's presence blob so they reflect the actual
+    /// mode (Swiftplay, Deathmatch, custom, etc.) rather than a hardcoded
+    /// placeholder.
+    pub async fn build_snapshot(&mut self) -> Result<MatchSnapshot, ValoTrackerError> {
+        // 1. Determine game state, queue ID, and map name from presence
         let presences = presence::get_presences(&self.local_client, &self.lockfile).await?;
         let game_state = presence::get_game_state(&presences, &self.auth.puuid);
+        let (queue_id, map_name) = presence::get_match_meta(&presences, &self.auth.puuid);
 
         let (match_id, raw_players): (String, Vec<RawPlayer>) = match &game_state {
             GameState::Pregame { .. } => {

@@ -183,10 +183,7 @@ impl ValoTrackerClient {
     fn get_players(&mut self) -> PyResult<Vec<PyPlayer>> {
         let snapshot = self
             .rt
-            .block_on(self.engine.build_snapshot(
-                String::new(), // map_name — unknown without extra fetch
-                String::new(), // queue_id — unknown without extra fetch
-            ))
+            .block_on(self.engine.build_snapshot())
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
         let players = snapshot
