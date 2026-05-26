@@ -164,7 +164,7 @@ fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
 fn map_path_to_name(path: &str) -> String {
     path.split('/')
         .filter(|s| !s.is_empty())
-        .last()
+        .next_back()
         .map(|s| s.to_owned())
         .unwrap_or_else(|| "Unknown Map".to_owned())
 }
