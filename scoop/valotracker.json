@@ -11,7 +11,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/Londopy/ValoTracker/releases/download/v3.0.4/ValoTracker-3.0.4-x86_64.msi",
-      "hash": "23ae9a11eff299b251d6536740cccdab83633e36960babccafca97cda2657e8d"
+      "hash": "b7ad784b5e666d46b9a3608f65b2c89033d072578319aff15792a09b1ab3106a"
     }
   },
   "installer": {
