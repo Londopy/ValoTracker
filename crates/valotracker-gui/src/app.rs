@@ -315,15 +315,15 @@ fn bg_thread(
             match valotracker_core::engine::Engine::init().await {
                 Ok(e) => break e,
                 Err(e) => {
-                    // Keep the real error so the idle screen can show *why*
-                    // init failed instead of mislabeling every failure as
-                    // "VALORANT not running".
-                    let is_lockfile = matches!(e, ValoTrackerError::LockfileNotFound);
+                    // if its just "cant reach valorant" (no lockfile, or the
+                    // local api connection failed) treat it as not-running and
+                    // show the friendly idle screen. only red-flag real errors.
+                    let offline = e.looks_offline();
                     {
                         let mut s = bg.lock().unwrap();
                         s.valorant_detected = false;
                         s.loading = false;
-                        s.error = if is_lockfile {
+                        s.error = if offline {
                             None
                         } else {
                             Some(format!("Connection failed: {e}"))

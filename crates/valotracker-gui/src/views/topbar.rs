@@ -98,7 +98,12 @@ pub fn draw_topbar(
             ui.separator();
 
             // Tabs
-            ui.selectable_value(tab, Tab::History, "📋 History");
+            if ui
+                .selectable_value(tab, Tab::History, "📋 History")
+                .clicked()
+            {
+                *do_history = true;
+            }
             if ui.selectable_value(tab, Tab::Match, "🎮 Live").clicked() {}
             ui.separator();
 
@@ -116,15 +121,6 @@ pub fn draw_topbar(
                 .clicked()
             {
                 *do_save = true;
-            }
-
-            if ui
-                .button("📋 History")
-                .on_hover_text("Open match history (h)")
-                .clicked()
-            {
-                *do_history = true;
-                *tab = Tab::History;
             }
         });
     });

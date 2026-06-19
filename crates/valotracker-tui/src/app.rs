@@ -133,7 +133,13 @@ impl App {
                 self.refresh().await;
             }
             Err(e) => {
-                self.load_error = Some(format!("{e}"));
+                // game probably just isnt running -> no scary error, the header
+                // already shows "Waiting for VALORANT". only show real failures.
+                self.load_error = if e.looks_offline() {
+                    None
+                } else {
+                    Some(format!("{e}"))
+                };
             }
         }
     }

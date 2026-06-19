@@ -83,9 +83,8 @@ pub fn draw_idle_screen(ui: &mut egui::Ui, valorant_running: bool, error: Option
                     .color(egui::Color32::from_rgb(100, 100, 120)),
             );
 
-            // ── Connection error (if any) ─────────────────────────────────────
-            // Shown when VALORANT *is* running but the tracker failed to connect
-            // to the local Riot API (lockfile/auth/region issue).
+            // red connection error (only shows when valorant IS running but we
+            // cant reach the local api)
             if let Some(err) = error {
                 ui.add_space(16.0);
                 ui.label(
@@ -96,13 +95,55 @@ pub fn draw_idle_screen(ui: &mut egui::Ui, valorant_running: bool, error: Option
                 ui.add_space(4.0);
                 ui.label(
                     egui::RichText::new(
-                        "VALORANT appears to be running, but the local API could not be reached. \
-                         Try running VALORANT as the same user (not elevated/admin), then restart ValoTracker.",
+                        "VALORANT is running but ValoTracker couldn't reach its local API — \
+                         see the fixes below.",
                     )
                     .size(11.0)
                     .color(egui::Color32::from_rgb(120, 120, 140)),
                 );
             }
+
+            // little legend so people know what each message means + how to fix
+            ui.add_space(20.0);
+            ui.separator();
+            ui.add_space(8.0);
+            ui.label(
+                egui::RichText::new("What the messages mean")
+                    .size(12.0)
+                    .strong()
+                    .color(egui::Color32::from_rgb(150, 150, 170)),
+            );
+            ui.add_space(4.0);
+            let hint = egui::Color32::from_rgb(120, 120, 140);
+            ui.label(
+                egui::RichText::new(
+                    "• Waiting for VALORANT — the game isn't running. Just launch VALORANT.",
+                )
+                .size(11.0)
+                .color(hint),
+            );
+            ui.label(
+                egui::RichText::new(
+                    "• In menu — you're in the lobby. Queue a match to start tracking.",
+                )
+                .size(11.0)
+                .color(hint),
+            );
+            ui.label(
+                egui::RichText::new(
+                    "• Connection failed — VALORANT is running but the local API can't be reached.",
+                )
+                .size(11.0)
+                .color(hint),
+            );
+            ui.label(
+                egui::RichText::new(
+                    "   Fix: run ValoTracker as administrator, restart VALORANT, or allow \
+                     127.0.0.1 through your firewall / antivirus.",
+                )
+                .size(11.0)
+                .color(hint),
+            );
 
             ui.add_space(24.0);
         });

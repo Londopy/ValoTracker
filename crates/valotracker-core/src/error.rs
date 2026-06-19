@@ -50,4 +50,15 @@ impl ValoTrackerError {
     pub fn other(msg: impl Into<String>) -> Self {
         Self::Other(msg.into())
     }
+
+    // true when this just means valorant isnt reachable yet (no lockfile, or we
+    // couldnt open a connection to the local api). basically "game probably not
+    // running" vs a real unexpected error worth showing in red.
+    pub fn looks_offline(&self) -> bool {
+        match self {
+            ValoTrackerError::LockfileNotFound => true,
+            ValoTrackerError::Http(e) => e.is_connect() || e.is_timeout() || e.is_request(),
+            _ => false,
+        }
+    }
 }
