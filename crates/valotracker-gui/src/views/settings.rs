@@ -13,6 +13,7 @@ pub fn draw_settings_modal(
     ctx: &egui::Context,
     config: &mut Config,
     open: &mut bool,
+    check_now: &mut bool,
 ) -> Option<String> {
     let mut status: Option<String> = None;
 
@@ -59,6 +60,26 @@ pub fn draw_settings_modal(
                 if let Err(e) = config.save() {
                     status = Some(format!("Config save failed: {e}"));
                 }
+            }
+
+            // updates stuff
+            ui.add_space(8.0);
+            ui.label(egui::RichText::new("Updates").strong().color(colors::HEADER));
+            ui.separator();
+
+            if ui
+                .checkbox(&mut config.features.check_updates, "Check for updates on startup")
+                .changed()
+            {
+                if let Err(e) = config.save() {
+                    status = Some(format!("Config save failed: {e}"));
+                }
+            }
+
+            ui.add_space(2.0);
+
+            if ui.button("Check for updates now").clicked() {
+                *check_now = true;
             }
 
             ui.add_space(8.0);

@@ -5,7 +5,7 @@ use std::time::Instant;
 use eframe::egui;
 
 use crate::{
-    app::{BgState, Tab},
+    app::{BgState, DownloadState, Tab},
     colors,
 };
 
@@ -18,6 +18,9 @@ pub fn draw_topbar(
     do_save: &mut bool,
     do_history: &mut bool,
     do_settings: &mut bool,
+    update_available: Option<&str>,
+    download_state: &DownloadState,
+    do_update: &mut bool,
 ) {
     ui.horizontal(|ui| {
         // Logo
@@ -53,6 +56,36 @@ pub fn draw_topbar(
         // Right-aligned controls
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.add_space(4.0);
+
+            // update button / progress bar, sits on the far right
+            match download_state {
+                DownloadState::Downloading(p) => {
+                    ui.add(egui::ProgressBar::new(*p).desired_width(90.0).text("Updating"));
+                    ui.separator();
+                }
+                DownloadState::Verifying => {
+                    ui.label(
+                        egui::RichText::new("Verifying update…")
+                            .color(egui::Color32::from_rgb(120, 200, 255)),
+                    );
+                    ui.separator();
+                }
+                DownloadState::Idle => {
+                    if let Some(ver) = update_available {
+                        if ui
+                            .button(
+                                egui::RichText::new(format!("⬆ v{ver}"))
+                                    .color(egui::Color32::from_rgb(120, 220, 140)),
+                            )
+                            .on_hover_text("Update available — click to install")
+                            .clicked()
+                        {
+                            *do_update = true;
+                        }
+                        ui.separator();
+                    }
+                }
+            }
 
             // Settings gear (far right)
             if ui.button("⚙").on_hover_text("Settings").clicked() {

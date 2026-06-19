@@ -11,6 +11,15 @@
   #define AppVersion "0.0.0"
 #endif
 
+; Arch is "x64" or "arm64"; SrcDir is the folder with the built exes.
+; Defaults keep a plain `iscc installer\ValoTracker.iss` working (x64).
+#ifndef Arch
+  #define Arch "x64"
+#endif
+#ifndef SrcDir
+  #define SrcDir "..\target\release"
+#endif
+
 #define AppName      "ValoTracker"
 #define AppPublisher "Londopy"
 #define AppURL       "https://github.com/Londopy/ValoTracker"
@@ -40,7 +49,7 @@ LicenseFile=LICENSE.txt
 
 ; Output
 OutputDir=..\dist
-OutputBaseFilename=ValoTracker-Setup-{#AppVersion}
+OutputBaseFilename=ValoTracker-Setup-{#AppVersion}-{#Arch}
 
 ; Compression
 Compression=lzma2
@@ -52,8 +61,13 @@ WizardSizePercent=120
 SetupIconFile=ValoTracker.ico
 
 ; 64-bit Windows only
+#if Arch == "arm64"
+ArchitecturesInstallIn64BitMode=arm64
+ArchitecturesAllowed=arm64
+#else
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
+#endif
 
 ; Uninstall icon shown in Add/Remove Programs
 UninstallDisplayName={#AppName} {#AppVersion}
@@ -103,14 +117,14 @@ Name: "startmenu"; \
 
 [Files]
 ; TUI binary
-Source: "..\target\release\valotracker.exe"; \
+Source: "{#SrcDir}\valotracker.exe"; \
   DestDir: "{app}"; \
   DestName: "ValoTracker.exe"; \
   Components: tui; \
   Flags: ignoreversion
 
 ; GUI binary
-Source: "..\target\release\valotracker-gui.exe"; \
+Source: "{#SrcDir}\valotracker-gui.exe"; \
   DestDir: "{app}"; \
   DestName: "ValoTracker-GUI.exe"; \
   Components: gui; \

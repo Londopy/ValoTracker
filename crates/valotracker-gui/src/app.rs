@@ -18,7 +18,7 @@ use tray_icon::{TrayIconBuilder, TrayIconEvent};
 use valotracker_core::{
     discord::{DiscordRpc, PresenceUpdate},
     history::{MatchHistory, PlayerEncounter, SavedMatch},
-    updater::{self, UpdateResult},
+    updater::{self, DownloadMsg, UpdateState},
     Config, MatchSnapshot, ResolvedPlayer, ValoTrackerError,
 };
 
@@ -68,6 +68,14 @@ pub(crate) enum Tab {
     History,
 }
 
+// download state for the updater ui
+#[derive(Clone)]
+pub(crate) enum DownloadState {
+    Idle,
+    Downloading(f32),
+    Verifying,
+}
+
 /// Sorted player list: ally team (highest rank first), then enemy team.
 /// Free function used by match_view so it doesn't need a GuiApp reference.
 pub(crate) fn sorted_players(snap: &MatchSnapshot) -> Vec<&ResolvedPlayer> {
@@ -111,7 +119,11 @@ pub struct GuiApp {
     show_settings: bool,
 
     // Auto-updater
-    update_rx: Option<mpsc::Receiver<UpdateResult>>,
+    update_rx: Option<mpsc::Receiver<UpdateState>>,
+    update_available: Option<String>,
+    show_update_confirm: bool,
+    download_rx: Option<mpsc::Receiver<DownloadMsg>>,
+    download_state: DownloadState,
     // Toast: (message, expiry_instant)
     toast: Option<(String, Instant)>,
 
@@ -152,7 +164,7 @@ impl GuiApp {
         let update_rx = if config.features.check_updates && config.update_check_due() {
             config.mark_update_checked();
             let (tx, rx) = mpsc::channel();
-            updater::spawn_update_check(Some(tx));
+            updater::spawn_update_check(tx);
             Some(rx)
         } else {
             None
@@ -182,6 +194,10 @@ impl GuiApp {
             quit_requested: false,
             show_settings: false,
             update_rx,
+            update_available: None,
+            show_update_confirm: false,
+            download_rx: None,
+            download_state: DownloadState::Idle,
             toast: None,
             history_db,
         }
@@ -433,14 +449,51 @@ impl eframe::App for GuiApp {
 
         // ── Poll auto-updater result ──────────────────────────────────────────
         if let Some(rx) = &self.update_rx {
-            if let Ok(result) = rx.try_recv() {
-                if let UpdateResult::Updated(ver) = result {
-                    self.toast = Some((
-                        format!("ValoTracker updated to v{ver} — restart to apply"),
-                        Instant::now(),
-                    ));
+            while let Ok(state) = rx.try_recv() {
+                if let UpdateState::Available(ver) = state {
+                    self.update_available = Some(ver);
                 }
-                self.update_rx = None;
+            }
+        }
+
+        // check on the download if ones going
+        if let Some(rx) = self.download_rx.take() {
+            let mut keep = true;
+            loop {
+                match rx.try_recv() {
+                    Ok(DownloadMsg::Progress(p)) => {
+                        self.download_state = DownloadState::Downloading(p);
+                    }
+                    Ok(DownloadMsg::Verifying) => {
+                        self.download_state = DownloadState::Verifying;
+                    }
+                    Ok(DownloadMsg::OpenedBrowser) => {
+                        self.download_state = DownloadState::Idle;
+                        self.toast = Some((
+                            "Opened the releases page in your browser".to_owned(),
+                            Instant::now(),
+                        ));
+                        keep = false;
+                    }
+                    Ok(DownloadMsg::Failed(e)) => {
+                        self.download_state = DownloadState::Idle;
+                        self.toast = Some((format!("Update failed: {e}"), Instant::now()));
+                        keep = false;
+                    }
+                    Ok(DownloadMsg::Done(path)) => {
+                        let _ = updater::spawn_installer(&path);
+                        std::process::exit(0);
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        keep = false;
+                        break;
+                    }
+                }
+            }
+            if keep {
+                self.download_rx = Some(rx);
+                ctx.request_repaint_after(Duration::from_millis(100));
             }
         }
 
@@ -491,6 +544,9 @@ impl eframe::App for GuiApp {
         let mut do_save = false;
         let mut do_history = false;
         let mut do_settings = false;
+        let mut do_update = false;
+        let upd_available = self.update_available.clone();
+        let dl_state = self.download_state.clone();
         egui::TopBottomPanel::top("topbar")
             .frame(
                 egui::Frame::none()
@@ -506,8 +562,53 @@ impl eframe::App for GuiApp {
                     &mut do_save,
                     &mut do_history,
                     &mut do_settings,
+                    upd_available.as_deref(),
+                    &dl_state,
+                    &mut do_update,
                 );
             });
+        if do_update {
+            self.show_update_confirm = true;
+        }
+
+        // the "wanna update?" popup
+        if self.show_update_confirm {
+            if let Some(ver) = self.update_available.clone() {
+                let mut start = false;
+                let mut cancel = false;
+                egui::Window::new("Update available")
+                    .collapsible(false)
+                    .resizable(false)
+                    .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                    .show(ctx, |ui| {
+                        ui.label(format!("ValoTracker v{ver} is available."));
+                        ui.label(
+                            "The installer will download, run silently, and relaunch the app.",
+                        );
+                        ui.add_space(8.0);
+                        ui.horizontal(|ui| {
+                            if ui.button("Update now").clicked() {
+                                start = true;
+                            }
+                            if ui.button("Later").clicked() {
+                                cancel = true;
+                            }
+                        });
+                    });
+                if start {
+                    self.show_update_confirm = false;
+                    let (tx, rx) = mpsc::channel();
+                    self.download_rx = Some(rx);
+                    self.download_state = DownloadState::Downloading(0.0);
+                    updater::start_download(ver, tx);
+                }
+                if cancel {
+                    self.show_update_confirm = false;
+                }
+            } else {
+                self.show_update_confirm = false;
+            }
+        }
 
         // ── Status bar ────────────────────────────────────────────────────────
         egui::TopBottomPanel::bottom("statusbar")
@@ -571,8 +672,19 @@ impl eframe::App for GuiApp {
 
         // ── Settings modal ────────────────────────────────────────────────────
         if self.show_settings {
-            if let Some(msg) = draw_settings_modal(ctx, &mut self.config, &mut self.show_settings) {
+            let mut check_now = false;
+            if let Some(msg) =
+                draw_settings_modal(ctx, &mut self.config, &mut self.show_settings, &mut check_now)
+            {
                 self.set_status(msg);
+            }
+            if check_now {
+                // kick off a fresh check right now
+                self.update_available = None;
+                let (tx, rx) = mpsc::channel();
+                updater::spawn_update_check(tx);
+                self.update_rx = Some(rx);
+                self.toast = Some(("checking for updates…".to_owned(), Instant::now()));
             }
         }
 

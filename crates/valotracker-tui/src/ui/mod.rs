@@ -64,18 +64,34 @@ fn draw_footer(frame: &mut Frame, area: ratatui::layout::Rect, app: &App) {
         Span::styled(" quit", dim),
     ];
 
-    // Show status message or load time on the right
-    let right = if let Some((msg, _)) = &app.status_msg {
-        Span::styled(format!("  {msg}"), Style::default().fg(Color::Green))
-    } else if let Some(dur) = app.load_duration {
-        Span::styled(
-            format!("  Loaded in {:.1}s", dur.as_secs_f32()),
-            Style::default().fg(Color::DarkGray),
-        )
-    } else if app.is_loading {
-        Span::styled("  Loading…", Style::default().fg(Color::Yellow))
-    } else {
-        Span::raw("")
+    // right side: update stuff first, then status msg / load time
+    let right = match &app.download_state {
+        crate::app::DownloadState::Downloading(p) => Span::styled(
+            format!("  ⬆ Updating {:.0}%", *p * 100.0),
+            Style::default().fg(Color::Cyan),
+        ),
+        crate::app::DownloadState::Verifying => {
+            Span::styled("  ⬆ Verifying update…", Style::default().fg(Color::Cyan))
+        }
+        crate::app::DownloadState::Idle => {
+            if let Some((msg, _)) = &app.status_msg {
+                Span::styled(format!("  {msg}"), Style::default().fg(Color::Green))
+            } else if app.update_available.is_some() {
+                Span::styled(
+                    "  ⬆ Update available — press u".to_owned(),
+                    Style::default().fg(Color::Cyan),
+                )
+            } else if let Some(dur) = app.load_duration {
+                Span::styled(
+                    format!("  Loaded in {:.1}s", dur.as_secs_f32()),
+                    Style::default().fg(Color::DarkGray),
+                )
+            } else if app.is_loading {
+                Span::styled("  Loading…", Style::default().fg(Color::Yellow))
+            } else {
+                Span::raw("")
+            }
+        }
     };
 
     spans.push(right);

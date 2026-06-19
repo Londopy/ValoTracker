@@ -5,7 +5,7 @@ use valotracker_core::{
     engine::Engine,
     history::MatchHistory,
     models::match_data::MatchSnapshot,
-    updater::{self, UpdateResult},
+    updater::{self, DownloadMsg, UpdateState},
     Config, ValoTrackerError,
 };
 
@@ -22,6 +22,14 @@ pub enum View {
     Encounter { puuid: String },
     /// Inline config editor overlay.
     Config,
+}
+
+// download state for the updater ui
+#[derive(Clone)]
+pub enum DownloadState {
+    Idle,
+    Downloading(f32),
+    Verifying,
 }
 
 /// Top-level application state machine.
@@ -54,7 +62,16 @@ pub struct App {
 
     // ── Auto-updater ─────────────────────────────────────────────────────────
     /// Receives the result of the background update check (if one was started).
-    update_rx: Option<mpsc::Receiver<UpdateResult>>,
+    update_rx: Option<mpsc::Receiver<UpdateState>>,
+    // the newest version we found, if theres one
+    pub update_available: Option<String>,
+    // gets download progress once an update starts
+    download_rx: Option<mpsc::Receiver<DownloadMsg>>,
+    // where the download is at rn
+    pub download_state: DownloadState,
+    // set once the installer is downloaded + good. the main loop sees this,
+    // quits, puts the terminal back to normal, then runs it
+    pub install_pending: Option<std::path::PathBuf>,
 
     /// Shared history DB — opened once at startup to avoid repeated open cost.
     pub history_db: Option<Arc<Mutex<MatchHistory>>>,
@@ -68,7 +85,7 @@ impl App {
         let update_rx = if config.features.check_updates && config.update_check_due() {
             config.mark_update_checked();
             let (tx, rx) = mpsc::channel();
-            updater::spawn_update_check(Some(tx));
+            updater::spawn_update_check(tx);
             Some(rx)
         } else {
             None
@@ -98,6 +115,10 @@ impl App {
             encounter_name: String::new(),
             status_msg: None,
             update_rx,
+            update_available: None,
+            download_rx: None,
+            download_state: DownloadState::Idle,
+            install_pending: None,
             history_db,
         };
         app.init_engine().await;
@@ -146,20 +167,50 @@ impl App {
 
     /// Called every frame tick — auto-refresh if interval has elapsed.
     pub async fn tick(&mut self) {
-        // Poll the update receiver; if a newer version was installed, show a
-        // one-line notification in the status bar. Never block — try_recv only.
+        // see if the update check found anything, show it in the footer
         if let Some(rx) = &self.update_rx {
-            if let Ok(result) = rx.try_recv() {
-                match result {
-                    UpdateResult::Updated(ver) => {
-                        self.set_status(format!(
-                            "ValoTracker updated to v{ver} — restart to apply"
-                        ));
-                    }
-                    UpdateResult::UpToDate | UpdateResult::Skipped => {}
+            while let Ok(state) = rx.try_recv() {
+                if let UpdateState::Available(ver) = state {
+                    self.update_available = Some(ver.clone());
+                    self.set_status(format!("Update v{ver} available — press u to install"));
                 }
-                // Drain the receiver after we've read the result
-                self.update_rx = None;
+            }
+        }
+
+        // check on the download if ones going
+        if let Some(rx) = self.download_rx.take() {
+            let mut keep = true;
+            loop {
+                match rx.try_recv() {
+                    Ok(DownloadMsg::Progress(p)) => {
+                        self.download_state = DownloadState::Downloading(p);
+                    }
+                    Ok(DownloadMsg::Verifying) => {
+                        self.download_state = DownloadState::Verifying;
+                    }
+                    Ok(DownloadMsg::OpenedBrowser) => {
+                        self.download_state = DownloadState::Idle;
+                        self.set_status("Opened the releases page in your browser".to_owned());
+                        keep = false;
+                    }
+                    Ok(DownloadMsg::Failed(e)) => {
+                        self.download_state = DownloadState::Idle;
+                        self.set_status(format!("Update failed: {e}"));
+                        keep = false;
+                    }
+                    Ok(DownloadMsg::Done(path)) => {
+                        self.install_pending = Some(path);
+                        keep = false;
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        keep = false;
+                        break;
+                    }
+                }
+            }
+            if keep {
+                self.download_rx = Some(rx);
             }
         }
 
@@ -227,6 +278,20 @@ impl App {
 
     pub fn set_status(&mut self, msg: String) {
         self.status_msg = Some((msg, Instant::now()));
+    }
+
+    // start grabbing the update (runs when you hit u)
+    pub fn start_update(&mut self) {
+        if self.download_rx.is_some() {
+            return;
+        }
+        if let Some(ver) = self.update_available.clone() {
+            let (tx, rx) = mpsc::channel();
+            self.download_rx = Some(rx);
+            self.download_state = DownloadState::Downloading(0.0);
+            self.set_status(format!("Downloading update v{ver}…"));
+            updater::start_download(ver, tx);
+        }
     }
 
     pub fn go_back(&mut self) {

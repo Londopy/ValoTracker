@@ -58,6 +58,10 @@ async fn handle_match_keys(app: &mut App, code: KeyCode) -> bool {
             app.view = View::Config;
         }
 
+        KeyCode::Char('u') => {
+            app.start_update();
+        }
+
         KeyCode::Char('t') => {
             app.config.display.show_streamer_tag = !app.config.display.show_streamer_tag;
             let _ = app.config.save();

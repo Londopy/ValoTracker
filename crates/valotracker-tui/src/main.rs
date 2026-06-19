@@ -39,10 +39,18 @@ async fn main() -> Result<()> {
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
 
-    result
+    // if we grabbed an installer, run it now that the terminals back to normal,
+    // then were done
+    if let Ok(Some(installer)) = &result {
+        let _ = valotracker_core::updater::spawn_installer(installer);
+    }
+
+    result.map(|_| ())
 }
 
-async fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
+async fn run(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+) -> Result<Option<std::path::PathBuf>> {
     let mut app = App::new().await;
 
     loop {
@@ -53,7 +61,12 @@ async fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()
         }
 
         app.tick().await;
+
+        // installer is ready, bounce so it can swap out the exe
+        if app.install_pending.is_some() {
+            break;
+        }
     }
 
-    Ok(())
+    Ok(app.install_pending.take())
 }
