@@ -168,12 +168,24 @@ impl App {
     /// Called every frame tick — auto-refresh if interval has elapsed.
     pub async fn tick(&mut self) {
         // see if the update check found anything, show it in the footer
-        if let Some(rx) = &self.update_rx {
-            while let Ok(state) = rx.try_recv() {
-                if let UpdateState::Available(ver) = state {
-                    self.update_available = Some(ver.clone());
-                    self.set_status(format!("Update v{ver} available — press u to install"));
+        if let Some(rx) = self.update_rx.take() {
+            let mut keep = true;
+            loop {
+                match rx.try_recv() {
+                    Ok(UpdateState::Available(ver)) => {
+                        self.update_available = Some(ver.clone());
+                        self.set_status(format!("Update v{ver} available — press u to install"));
+                    }
+                    Ok(_) => {}
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        keep = false;
+                        break;
+                    }
                 }
+            }
+            if keep {
+                self.update_rx = Some(rx);
             }
         }
 
