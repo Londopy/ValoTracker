@@ -673,9 +673,12 @@ impl eframe::App for GuiApp {
         // ── Settings modal ────────────────────────────────────────────────────
         if self.show_settings {
             let mut check_now = false;
-            if let Some(msg) =
-                draw_settings_modal(ctx, &mut self.config, &mut self.show_settings, &mut check_now)
-            {
+            if let Some(msg) = draw_settings_modal(
+                ctx,
+                &mut self.config,
+                &mut self.show_settings,
+                &mut check_now,
+            ) {
                 self.set_status(msg);
             }
             if check_now {

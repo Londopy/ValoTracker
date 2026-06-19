@@ -60,7 +60,11 @@ pub fn draw_topbar(
             // update button / progress bar, sits on the far right
             match download_state {
                 DownloadState::Downloading(p) => {
-                    ui.add(egui::ProgressBar::new(*p).desired_width(90.0).text("Updating"));
+                    ui.add(
+                        egui::ProgressBar::new(*p)
+                            .desired_width(90.0)
+                            .text("Updating"),
+                    );
                     ui.separator();
                 }
                 DownloadState::Verifying => {

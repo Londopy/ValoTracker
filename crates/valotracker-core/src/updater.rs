@@ -256,7 +256,9 @@ fn open_releases_page() {
     let _url = format!("https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest");
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("explorer.exe").arg(&_url).spawn();
+        let _ = std::process::Command::new("explorer.exe")
+            .arg(&_url)
+            .spawn();
     }
 }
 

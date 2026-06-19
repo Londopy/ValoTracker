@@ -64,11 +64,18 @@ pub fn draw_settings_modal(
 
             // updates stuff
             ui.add_space(8.0);
-            ui.label(egui::RichText::new("Updates").strong().color(colors::HEADER));
+            ui.label(
+                egui::RichText::new("Updates")
+                    .strong()
+                    .color(colors::HEADER),
+            );
             ui.separator();
 
             if ui
-                .checkbox(&mut config.features.check_updates, "Check for updates on startup")
+                .checkbox(
+                    &mut config.features.check_updates,
+                    "Check for updates on startup",
+                )
                 .changed()
             {
                 if let Err(e) = config.save() {
