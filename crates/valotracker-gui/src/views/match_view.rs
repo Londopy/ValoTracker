@@ -20,7 +20,7 @@ pub fn draw_match_view(
 ) {
     // ── Idle screen: VALORANT not running ────────────────────────────────────
     if !bg.valorant_detected {
-        super::idle::draw_idle_screen(ui, false);
+        super::idle::draw_idle_screen(ui, false, bg.error.as_deref());
         return;
     }
 
@@ -34,7 +34,7 @@ pub fn draw_match_view(
 
     // ── Idle screen: VALORANT running, not in a match ────────────────────────
     if bg.snapshot.is_none() {
-        super::idle::draw_idle_screen(ui, true);
+        super::idle::draw_idle_screen(ui, true, None);
         return;
     }
 
@@ -312,6 +312,4 @@ fn draw_player_row(
     };
     ui.add_sized(
         [w[11], 20.0],
-        egui::Label::new(egui::RichText::new(met_str).monospace().color(met_col)),
-    );
-}
+        egui::Label::new(egui::RichText::new(met_str).monospace()

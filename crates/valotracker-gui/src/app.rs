@@ -298,11 +298,23 @@ fn bg_thread(
         let mut engine = loop {
             match valotracker_core::engine::Engine::init().await {
                 Ok(e) => break e,
-                Err(_) => {
+                Err(e) => {
+                    // Keep the real error so the idle screen can show *why*
+                    // init failed instead of mislabeling every failure as
+                    // "VALORANT not running".
+                    let is_lockfile = matches!(e, ValoTrackerError::LockfileNotFound);
                     {
                         let mut s = bg.lock().unwrap();
                         s.valorant_detected = false;
                         s.loading = false;
+                        // A missing lockfile genuinely means VALORANT isn't up;
+                        // anything else is a real connection/auth failure worth
+                        // surfacing to the user.
+                        s.error = if is_lockfile {
+                            None
+                        } else {
+                            Some(format!("Connection failed: {e}"))
+                        };
                     }
                     ctx.request_repaint();
                     tokio::time::sleep(Duration::from_secs(2)).await;
@@ -604,30 +616,4 @@ fn build_tray() -> Option<TrayState> {
         .collect();
 
     let icon = tray_icon::Icon::from_rgba(rgba, SIZE, SIZE)
-        .map_err(|e| eprintln!("tray icon: {e}"))
-        .ok()?;
-
-    let show_item = MenuItem::new("Open ValoTracker", true, None);
-    let quit_item = MenuItem::new("Quit", true, None);
-    let show_id = show_item.id().clone();
-    let quit_id = quit_item.id().clone();
-
-    let menu = Menu::new();
-    menu.append_items(&[&show_item, &PredefinedMenuItem::separator(), &quit_item])
-        .map_err(|e| eprintln!("tray menu: {e}"))
-        .ok()?;
-
-    let tray = TrayIconBuilder::new()
-        .with_menu(Box::new(menu))
-        .with_tooltip("ValoTracker")
-        .with_icon(icon)
-        .build()
-        .map_err(|e| eprintln!("tray: {e}"))
-        .ok()?;
-
-    Some(TrayState {
-        _icon: tray,
-        show_id,
-        quit_id,
-    })
-}
+        .map_err(|e| eprintln!("tray icon

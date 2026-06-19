@@ -7,7 +7,11 @@ use eframe::egui;
 /// `valorant_running` distinguishes two idle states:
 /// * `false` — VALORANT is not even running yet.
 /// * `true`  — VALORANT is running but the player is in menus.
-pub fn draw_idle_screen(ui: &mut egui::Ui, valorant_running: bool) {
+///
+/// `error` is an optional connection/auth failure message. When present it is
+/// shown in red so the user sees *why* the tracker can't connect instead of
+/// being told to launch a game that is already running.
+pub fn draw_idle_screen(ui: &mut egui::Ui, valorant_running: bool, error: Option<&str>) {
     let t = ui.ctx().input(|i| i.time);
 
     // Request continuous repaint for the pulse animation.
@@ -73,13 +77,4 @@ pub fn draw_idle_screen(ui: &mut egui::Ui, valorant_running: bool) {
             ui.add_space(12.0);
 
             // ── Instruction ───────────────────────────────────────────────────
-            ui.label(
-                egui::RichText::new(instruction)
-                    .size(13.0)
-                    .color(egui::Color32::from_rgb(100, 100, 120)),
-            );
-
-            ui.add_space(24.0);
-        });
-    });
-}
+   
