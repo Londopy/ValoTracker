@@ -312,4 +312,6 @@ fn draw_player_row(
     };
     ui.add_sized(
         [w[11], 20.0],
-        egui::Label::new(egui::RichText::new(met_str).monospace()
+        egui::Label::new(egui::RichText::new(met_str).monospace().color(met_col)),
+    );
+}

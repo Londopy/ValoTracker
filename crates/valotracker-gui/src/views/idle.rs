@@ -77,4 +77,34 @@ pub fn draw_idle_screen(ui: &mut egui::Ui, valorant_running: bool, error: Option
             ui.add_space(12.0);
 
             // ── Instruction ───────────────────────────────────────────────────
-   
+            ui.label(
+                egui::RichText::new(instruction)
+                    .size(13.0)
+                    .color(egui::Color32::from_rgb(100, 100, 120)),
+            );
+
+            // ── Connection error (if any) ─────────────────────────────────────
+            // Shown when VALORANT *is* running but the tracker failed to connect
+            // to the local Riot API (lockfile/auth/region issue).
+            if let Some(err) = error {
+                ui.add_space(16.0);
+                ui.label(
+                    egui::RichText::new(err)
+                        .size(13.0)
+                        .color(egui::Color32::from_rgb(235, 80, 80)),
+                );
+                ui.add_space(4.0);
+                ui.label(
+                    egui::RichText::new(
+                        "VALORANT appears to be running, but the local API could not be reached. \
+                         Try running VALORANT as the same user (not elevated/admin), then restart ValoTracker.",
+                    )
+                    .size(11.0)
+                    .color(egui::Color32::from_rgb(120, 120, 140)),
+                );
+            }
+
+            ui.add_space(24.0);
+        });
+    });
+}
