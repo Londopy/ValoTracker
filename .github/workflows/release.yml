@@ -30,7 +30,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc, aarch64-pc-windows-msvc
+          targets: x86_64-pc-windows-msvc
 
       # ── Cargo cache ──────────────────────────────────────────────────────────
       - name: Cache cargo registry + target
@@ -59,12 +59,6 @@ jobs:
       - name: Build ValoTracker-gui.exe (GUI)
         run: cargo build -p valotracker-gui --release --features gui
 
-      # ARM64 native builds (cross-compiled on the x64 runner)
-      - name: Build ValoTracker (ARM64)
-        run: |
-          cargo build -p valotracker-tui --release --target aarch64-pc-windows-msvc
-          cargo build -p valotracker-gui --release --features gui --target aarch64-pc-windows-msvc
-
       # ── Build Inno Setup installer ────────────────────────────────────────────
       - name: Build Inno Setup installer (.exe)
         shell: pwsh
@@ -76,8 +70,6 @@ jobs:
           }
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           & $iscc /DAppVersion=$env:VERSION /DArch=x64 /DSrcDir=..\target\release installer\ValoTracker.iss
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $iscc /DAppVersion=$env:VERSION /DArch=arm64 /DSrcDir=..\target\aarch64-pc-windows-msvc\release installer\ValoTracker.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # ── Install cargo-wix + WiX Toolset ──────────────────────────────────────
@@ -114,7 +106,6 @@ jobs:
           $gui = Get-FileHash "target\release\valotracker-gui.exe" -Algorithm SHA256
           $msi = Get-FileHash "dist\ValoTracker-$env:VERSION-x86_64.msi" -Algorithm SHA256
           $setupx64 = Get-FileHash "dist\ValoTracker-Setup-$env:VERSION-x64.exe" -Algorithm SHA256
-          $setuparm = Get-FileHash "dist\ValoTracker-Setup-$env:VERSION-arm64.exe" -Algorithm SHA256
 
           echo "SHA_TUI=$($tui.Hash.ToLower())" >> $env:GITHUB_ENV
           echo "SHA_GUI=$($gui.Hash.ToLower())" >> $env:GITHUB_ENV
@@ -125,7 +116,6 @@ jobs:
           $($tui.Hash.ToLower())  ValoTracker.exe
           $($gui.Hash.ToLower())  ValoTracker-gui.exe
           $($setupx64.Hash.ToLower())  ValoTracker-Setup-$env:VERSION-x64.exe
-          $($setuparm.Hash.ToLower())  ValoTracker-Setup-$env:VERSION-arm64.exe
           $($msi.Hash.ToLower())  ValoTracker-$env:VERSION-x86_64.msi
           "@ | Out-File -FilePath dist\checksums.txt -Encoding utf8
 
@@ -222,6 +212,5 @@ jobs:
             target/release/valotracker-gui.exe
             dist/ValoTracker-${{ env.VERSION }}-x86_64.msi
             dist/ValoTracker-Setup-${{ env.VERSION }}-x64.exe
-            dist/ValoTracker-Setup-${{ env.VERSION }}-arm64.exe
             ${{ env.WHL_PATH }}
             dist/checksums.txt
