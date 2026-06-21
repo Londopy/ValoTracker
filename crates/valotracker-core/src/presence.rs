@@ -18,8 +18,8 @@ struct RawPresence {
     game_name: Option<String>,
     #[serde(rename = "game_tag")]
     game_tag: Option<String>,
-    // which riot product this entry is for ("valorant", "riot", ...). the feed
-    // lists the same puuid once per product so we use this to find ours.
+    // which riot product this entry is for ("valorant", "riot_client", ...). the
+    // feed lists the same puuid once per product so we use this to find ours.
     product: Option<String>,
     /// Base64-encoded JSON private blob.
     private: Option<String>,
@@ -227,4 +227,10 @@ fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
 ///
 /// `/Game/Maps/Ascent/Ascent` → `"Ascent"`
 /// `/Game/Maps/Triad/Triad`   → `"Triad"` (Haven's internal name)
-/// `""`          
+/// `""`                       → `"Unknown Map"`
+fn map_path_to_name(path: &str) -> String {
+    path.split('/')
+        .rfind(|s| !s.is_empty())
+        .map(|s| s.to_owned())
+        .unwrap_or_else(|| "Unknown Map".to_owned())
+}
