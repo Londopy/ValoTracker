@@ -183,31 +183,43 @@ pub fn get_match_meta(presences: &[PlayerPresence], puuid: &str) -> (String, Str
 fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
     let bytes = base64::engine::general_purpose::STANDARD.decode(b64)?;
     let decoded = String::from_utf8(bytes)?;
+    let v: serde_json::Value = serde_json::from_str(&decoded)?;
 
-    // Try a clean struct deserialise first — this is the fast path and works
-    // on all known Valorant builds.
-    if let Ok(p) = serde_json::from_str::<PresencePrivate>(&decoded) {
-        return Ok(p);
+    // newer riot builds (release-12.xx+) moved the match/party fields into nested
+    // objects ("matchPresenceData" / "partyPresenceData"); older builds had them
+    // flat at the top level. read a string/number checking the nested object
+    // first, then fall back to the top level so both layouts work.
+    fn s(v: &serde_json::Value, nested: &str, key: &str) -> String {
+        v.get(nested)
+            .and_then(|o| o.get(key))
+            .and_then(|x| x.as_str())
+            .or_else(|| v.get(key).and_then(|x| x.as_str()))
+            .unwrap_or("")
+            .to_owned()
+    }
+    fn n(v: &serde_json::Value, nested: &str, key: &str) -> u8 {
+        v.get(key)
+            .and_then(|x| x.as_u64())
+            .or_else(|| v.get(nested).and_then(|o| o.get(key)).and_then(|x| x.as_u64()))
+            .unwrap_or(0)
+            .min(255) as u8
     }
 
-    // Fallback: parse as a generic Value and extract only what we need so
-    // that an unexpected type on any other field cannot kill game detection.
-    let v: serde_json::Value = serde_json::from_str(&decoded)?;
-    let str_field =
-        |key: &str| -> String { v.get(key).and_then(|x| x.as_str()).unwrap_or("").to_owned() };
-    let u8_field =
-        |key: &str| -> u8 { v.get(key).and_then(|x| x.as_u64()).unwrap_or(0).min(255) as u8 };
+    let mut party_max = n(&v, "partyPresenceData", "maxPartySize");
+    if party_max == 0 {
+        party_max = n(&v, "partyPresenceData", "partyMaxSize");
+    }
 
     Ok(PresencePrivate {
-        session_loop_state: str_field("sessionLoopState"),
-        party_id: str_field("partyId"),
-        party_size: u8_field("partySize"),
-        party_max_size: u8_field("partyMaxSize"),
-        queue_id: str_field("queueId"),
-        party_state: str_field("partyState"),
-        provisioning_flow: str_field("provisioningFlow"),
+        session_loop_state: s(&v, "matchPresenceData", "sessionLoopState"),
+        party_id: s(&v, "partyPresenceData", "partyId"),
+        party_size: n(&v, "partyPresenceData", "partySize"),
+        party_max_size: party_max,
+        queue_id: s(&v, "matchPresenceData", "queueId"),
+        party_state: s(&v, "partyPresenceData", "partyState"),
+        provisioning_flow: s(&v, "matchPresenceData", "provisioningFlow"),
         is_valid: v.get("isValid").and_then(|x| x.as_bool()).unwrap_or(false),
-        match_map: str_field("matchMap"),
+        match_map: s(&v, "matchPresenceData", "matchMap"),
     })
 }
 
@@ -215,10 +227,4 @@ fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
 ///
 /// `/Game/Maps/Ascent/Ascent` → `"Ascent"`
 /// `/Game/Maps/Triad/Triad`   → `"Triad"` (Haven's internal name)
-/// `""`                       → `"Unknown Map"`
-fn map_path_to_name(path: &str) -> String {
-    path.split('/')
-        .rfind(|s| !s.is_empty())
-        .map(|s| s.to_owned())
-        .unwrap_or_else(|| "Unknown Map".to_owned())
-}
+/// `""`          
