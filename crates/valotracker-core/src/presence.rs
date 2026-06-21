@@ -18,6 +18,9 @@ struct RawPresence {
     game_name: Option<String>,
     #[serde(rename = "game_tag")]
     game_tag: Option<String>,
+    // which riot product this entry is for ("valorant", "riot", ...). the feed
+    // lists the same puuid once per product so we use this to find ours.
+    product: Option<String>,
     /// Base64-encoded JSON private blob.
     private: Option<String>,
 }
@@ -60,6 +63,7 @@ pub struct PlayerPresence {
     pub puuid: String,
     pub game_name: String,
     pub game_tag: String,
+    pub product: String,
     pub private: Option<PresencePrivate>,
 }
 
@@ -94,6 +98,7 @@ pub async fn get_presences(
                 puuid: p.puuid,
                 game_name: p.game_name.unwrap_or_default(),
                 game_tag: p.game_tag.unwrap_or_default(),
+                product: p.product.unwrap_or_default(),
                 private,
             }
         })
@@ -103,8 +108,30 @@ pub async fn get_presences(
 }
 
 /// Determine the current [`GameState`] for `puuid` from a set of presences.
+// the presences feed lists the same puuid once per riot product (riot client,
+// valorant, ...). grab OUR valorant one: first pick the entry whose private blob
+// actually has a session state (only valorant has that), then fall back to the
+// one tagged product "valorant", then anything matching our puuid.
+fn find_self<'a>(presences: &'a [PlayerPresence], puuid: &str) -> Option<&'a PlayerPresence> {
+    presences
+        .iter()
+        .find(|p| {
+            p.puuid == puuid
+                && p.private
+                    .as_ref()
+                    .map(|pv| !pv.session_loop_state.is_empty())
+                    .unwrap_or(false)
+        })
+        .or_else(|| {
+            presences
+                .iter()
+                .find(|p| p.puuid == puuid && p.product.eq_ignore_ascii_case("valorant"))
+        })
+        .or_else(|| presences.iter().find(|p| p.puuid == puuid))
+}
+
 pub fn get_game_state(presences: &[PlayerPresence], puuid: &str) -> GameState {
-    let presence = presences.iter().find(|p| p.puuid == puuid);
+    let presence = find_self(presences, puuid);
 
     match presence.and_then(|p| p.private.as_ref()) {
         None => GameState::Disconnected,
@@ -129,10 +156,7 @@ pub fn get_game_state(presences: &[PlayerPresence], puuid: &str) -> GameState {
 /// - `queue_id`: e.g. `"swiftplay"`, `"competitive"`, `"custom"` (fallback when empty).
 /// - `map_name`: display-friendly name derived from the asset path, e.g. `"Ascent"`.
 pub fn get_match_meta(presences: &[PlayerPresence], puuid: &str) -> (String, String) {
-    let priv_data = presences
-        .iter()
-        .find(|p| p.puuid == puuid)
-        .and_then(|p| p.private.as_ref());
+    let priv_data = find_self(presences, puuid).and_then(|p| p.private.as_ref());
 
     match priv_data {
         Some(d) => {
