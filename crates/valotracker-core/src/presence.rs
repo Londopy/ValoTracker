@@ -200,7 +200,11 @@ fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
     fn n(v: &serde_json::Value, nested: &str, key: &str) -> u8 {
         v.get(key)
             .and_then(|x| x.as_u64())
-            .or_else(|| v.get(nested).and_then(|o| o.get(key)).and_then(|x| x.as_u64()))
+            .or_else(|| {
+                v.get(nested)
+                    .and_then(|o| o.get(key))
+                    .and_then(|x| x.as_u64())
+            })
             .unwrap_or(0)
             .min(255) as u8
     }
