@@ -1,5 +1,5 @@
 {
-  "version": "3.0.4",
+  "version": "3.0.5",
   "description": "Privacy-first Valorant match tracker — real-time player ranks, stats, and party info. No login required.",
   "homepage": "https://github.com/Londopy/ValoTracker",
   "license": "MIT",
@@ -10,8 +10,8 @@
   ],
   "architecture": {
     "64bit": {
-      "url": "https://github.com/Londopy/ValoTracker/releases/download/v3.0.4/ValoTracker-3.0.4-x86_64.msi",
-      "hash": "b7ad784b5e666d46b9a3608f65b2c89033d072578319aff15792a09b1ab3106a"
+      "url": "https://github.com/Londopy/ValoTracker/releases/download/v3.0.5/ValoTracker-3.0.5-x86_64.msi",
+      "hash": "66ba3c93b886d5be346135bf90b806a3a4d1fda8689dfb87c63035ae77fba503"
     }
   },
   "installer": {
