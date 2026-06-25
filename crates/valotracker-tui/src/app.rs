@@ -59,6 +59,7 @@ pub struct App {
 
     // ── Status bar ───────────────────────────────────────────────────────────
     pub status_msg: Option<(String, Instant)>,
+    last_saved_match: Option<String>,
 
     // ── Auto-updater ─────────────────────────────────────────────────────────
     /// Receives the result of the background update check (if one was started).
@@ -114,6 +115,7 @@ impl App {
             encounter_data: None,
             encounter_name: String::new(),
             status_msg: None,
+            last_saved_match: None,
             update_rx,
             update_available: None,
             download_rx: None,
@@ -155,6 +157,23 @@ impl App {
         match engine.build_snapshot().await {
             Ok(snap) => {
                 self.snapshot = Some(snap);
+                // auto-save new matches so encounter history builds on its own
+                if let Some(s) = &self.snapshot {
+                    if self.last_saved_match.as_deref() != Some(s.match_id.as_str()) {
+                        if let Some(db) = &self.history_db {
+                            let _ = db.lock().unwrap().save_match(
+                                &s.match_id,
+                                &s.map_name,
+                                &s.queue_id,
+                                &s.server,
+                                &s.players,
+                                &s.my_puuid,
+                                None,
+                            );
+                        }
+                        self.last_saved_match = Some(s.match_id.clone());
+                    }
+                }
                 self.load_error = None;
                 self.load_duration = Some(start.elapsed());
             }

@@ -1,7 +1,7 @@
 //! Player encounter side panel.
 
 use eframe::egui;
-use valotracker_core::history::PlayerEncounter;
+use valotracker_core::{history::PlayerEncounter, tier_to_short};
 
 use crate::colors;
 
@@ -57,11 +57,9 @@ pub fn draw_encounter_panel(
 
     ui.label(
         egui::RichText::new(format!(
-            "{icon}  {}-{} W/L  ·  Avg {:.1}K/{:.1}D  ·  HS {:.0}%  ·  Usually {}",
+            "{icon}  {}-{} W/L vs you  ·  Avg HS {:.0}%  ·  Usually {}",
             summary.wins_against,
             summary.losses_against,
-            summary.avg_kills,
-            summary.avg_deaths,
             summary.avg_hs_pct * 100.0,
             summary.most_played_agent,
         ))
@@ -75,11 +73,11 @@ pub fn draw_encounter_panel(
         .auto_shrink([false, false])
         .show(ui, |ui| {
             egui::Grid::new("enc_grid")
-                .num_columns(8)
+                .num_columns(7)
                 .striped(true)
                 .spacing([8.0, 3.0])
                 .show(ui, |ui| {
-                    for h in ["Date", "Map", "Agent", "K", "D", "A", "HS%", "W/L"] {
+                    for h in ["Date", "Map", "Agent", "Rank", "K/D", "HS%", "W/L"] {
                         ui.label(
                             egui::RichText::new(h)
                                 .strong()
@@ -114,20 +112,13 @@ pub fn draw_encounter_panel(
                         ui.label(egui::RichText::new(format!("{} {}", &enc.map, side)).small());
                         ui.label(egui::RichText::new(&enc.agent).small());
                         ui.label(
-                            egui::RichText::new(enc.kills.to_string())
-                                .color(egui::Color32::from_rgb(80, 220, 100))
-                                .monospace()
+                            egui::RichText::new(tier_to_short(enc.rank_tier))
+                                .color(colors::rank_color(enc.rank_tier))
                                 .small(),
                         );
                         ui.label(
-                            egui::RichText::new(enc.deaths.to_string())
-                                .color(egui::Color32::from_rgb(220, 80, 80))
-                                .monospace()
-                                .small(),
-                        );
-                        ui.label(
-                            egui::RichText::new(enc.assists.to_string())
-                                .color(colors::DIM)
+                            egui::RichText::new(format!("{:.2}", enc.kd_ratio))
+                                .color(colors::kd_color(enc.kd_ratio))
                                 .monospace()
                                 .small(),
                         );

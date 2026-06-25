@@ -40,6 +40,7 @@ pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
         ratatui::layout::Constraint::Length(5),  // K/D
         ratatui::layout::Constraint::Length(4),  // LVL
         ratatui::layout::Constraint::Length(5),  // ΔRR
+        ratatui::layout::Constraint::Length(6),  // FORM
         ratatui::layout::Constraint::Length(3),  // MET
     ];
 
@@ -59,6 +60,7 @@ pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
         Cell::from("K/D").style(header_style),
         Cell::from("LVL").style(header_style),
         Cell::from("ΔRR").style(header_style),
+        Cell::from("FORM").style(header_style),
         Cell::from("MET").style(header_style),
     ]);
 
@@ -221,6 +223,28 @@ fn build_player_row<'a>(
         Cell::from("—")
     };
 
+    // ── FORM cell (last 5 W/L, newest first) ──────────────────────────────
+    let form_cell = {
+        let spans: Vec<Span> = if player.stats.recent_results.is_empty() {
+            vec![Span::styled("—", Style::default().fg(DIM_COLOR))]
+        } else {
+            player
+                .stats
+                .recent_results
+                .iter()
+                .take(5)
+                .map(|&won| {
+                    if won {
+                        Span::styled("W", Style::default().fg(Color::Rgb(100, 220, 140)))
+                    } else {
+                        Span::styled("L", Style::default().fg(Color::Rgb(220, 100, 100)))
+                    }
+                })
+                .collect()
+        };
+        Cell::from(Line::from(spans))
+    };
+
     // ── MET (times seen) cell ─────────────────────────────────────────────
     let met_cell = if player.times_seen > 0 {
         Cell::from(player.times_seen.to_string())
@@ -248,6 +272,7 @@ fn build_player_row<'a>(
         kd_cell,
         lvl_cell,
         rr_delta_cell,
+        form_cell,
         met_cell,
     ])
     .style(row_style)
