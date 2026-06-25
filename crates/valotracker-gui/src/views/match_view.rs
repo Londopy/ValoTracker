@@ -43,15 +43,15 @@ pub fn draw_match_view(
     let short = config.display.short_ranks;
 
     // Column pixel widths
-    const W: [f32; 13] = [
-        44.0, 100.0, 185.0, 110.0, 38.0, 90.0, 45.0, 45.0, 46.0, 38.0, 45.0, 60.0, 35.0,
+    const W: [f32; 14] = [
+        44.0, 100.0, 185.0, 110.0, 38.0, 90.0, 45.0, 45.0, 46.0, 38.0, 45.0, 60.0, 35.0, 150.0,
     ];
 
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
             egui::Grid::new("match_grid")
-                .num_columns(13)
+                .num_columns(14)
                 .striped(false)
                 .spacing([5.0, 3.0])
                 .min_col_width(0.0)
@@ -59,7 +59,7 @@ pub fn draw_match_view(
                     // ── Column headers ────────────────────────────────────────
                     for (i, h) in [
                         "PTY", "AGENT", "NAME", "RANK", "RR", "PEAK", "HS%", "WR%", "K/D", "LVL",
-                        "ΔRR", "FORM", "MET",
+                        "ΔRR", "FORM", "MET", "SKIN",
                     ]
                     .iter()
                     .enumerate()
@@ -115,7 +115,7 @@ fn draw_player_row(
     ui: &mut egui::Ui,
     player: &valotracker_core::ResolvedPlayer,
     config: &Config,
-    w: &[f32; 13],
+    w: &[f32; 14],
     short: bool,
     open_enc: &mut Option<(String, String)>,
 ) {
@@ -343,5 +343,19 @@ fn draw_player_row(
     ui.add_sized(
         [w[12], 20.0],
         egui::Label::new(egui::RichText::new(met_str).monospace().color(met_col)),
+    );
+
+    // ── SKIN (equipped primary weapon — in-game only) ───────────────────
+    let (skin_str, skin_col) = if player.weapon_skin.is_empty() {
+        ("—".to_owned(), colors::DIM)
+    } else {
+        (
+            player.weapon_skin.clone(),
+            egui::Color32::from_rgb(210, 180, 120),
+        )
+    };
+    ui.add_sized(
+        [w[13], 20.0],
+        egui::Label::new(egui::RichText::new(skin_str).color(skin_col).small()),
     );
 }
