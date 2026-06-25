@@ -112,6 +112,8 @@ pub struct GuiApp {
     history: Vec<SavedMatch>,
     history_sel: Option<usize>,
     status_msg: Option<(String, Instant)>,
+    // match_id of the last match we auto-saved (save each match once)
+    last_saved_match: Option<String>,
 
     // Tray + window management
     tray: Option<TrayState>,
@@ -190,6 +192,7 @@ impl GuiApp {
             history: Vec::new(),
             history_sel: None,
             status_msg: None,
+            last_saved_match: None,
             tray: build_tray(),
             quit_requested: false,
             show_settings: false,
@@ -518,6 +521,25 @@ impl eframe::App for GuiApp {
 
         // Snapshot bg state (keeps lock duration minimal)
         let bg = self.bg.lock().unwrap().clone();
+
+        // auto-save each new match to the local history db so the "played with
+        // before" panel builds up on its own (idempotent per match id).
+        if let Some(snap) = &bg.snapshot {
+            if self.last_saved_match.as_deref() != Some(snap.match_id.as_str()) {
+                if let Some(db) = &self.history_db {
+                    let _ = db.lock().unwrap().save_match(
+                        &snap.match_id,
+                        &snap.map_name,
+                        &snap.queue_id,
+                        &snap.server,
+                        &snap.players,
+                        &snap.my_puuid,
+                        None,
+                    );
+                }
+                self.last_saved_match = Some(snap.match_id.clone());
+            }
+        }
 
         // ── Encounter side panel ──────────────────────────────────────────────
         if self.show_encounter {

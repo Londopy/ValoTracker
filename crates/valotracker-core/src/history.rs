@@ -244,6 +244,12 @@ impl MatchHistory {
             ],
         )?;
 
+        // clear any previous rows for this match so re-saving doesn't duplicate
+        self.conn.execute(
+            "DELETE FROM match_players WHERE match_id = ?1",
+            params![match_id],
+        )?;
+
         for player in players {
             self.conn.execute(
                 "INSERT INTO match_players
