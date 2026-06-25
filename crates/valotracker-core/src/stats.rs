@@ -237,9 +237,30 @@ async fn fetch_match_details(
 
     let kills = st["kills"].as_u64().unwrap_or(0) as u32;
     let deaths = st["deaths"].as_u64().unwrap_or(0) as u32;
-    let headshots = st["headshots"].as_u64().unwrap_or(0) as u32;
-    let bodyshots = st["bodyshots"].as_u64().unwrap_or(0) as u32;
-    let legshots = st["legshots"].as_u64().unwrap_or(0) as u32;
+
+    // headshot data isnt in the aggregate stats — its per round. walk every
+    // round's playerStats, find this player, and sum the shot locations off
+    // their damage entries so we can work out a real headshot %.
+    let (mut headshots, mut bodyshots, mut legshots) = (0u32, 0u32, 0u32);
+    if let Some(rounds) = json["roundResults"].as_array() {
+        for round in rounds {
+            let Some(pstats) = round["playerStats"].as_array() else {
+                continue;
+            };
+            for ps in pstats {
+                if ps["subject"].as_str() != Some(puuid) {
+                    continue;
+                }
+                if let Some(dmg) = ps["damage"].as_array() {
+                    for d in dmg {
+                        headshots += d["headshots"].as_u64().unwrap_or(0) as u32;
+                        bodyshots += d["bodyshots"].as_u64().unwrap_or(0) as u32;
+                        legshots += d["legshots"].as_u64().unwrap_or(0) as u32;
+                    }
+                }
+            }
+        }
+    }
     let total_shots = headshots + bodyshots + legshots;
 
     // figure out if this player won by matching their team in the teams array

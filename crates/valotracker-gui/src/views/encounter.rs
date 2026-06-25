@@ -1,18 +1,24 @@
 //! Player encounter side panel.
 
 use eframe::egui;
-use valotracker_core::{history::PlayerEncounter, tier_to_short};
+use valotracker_core::{history::PlayerEncounter, teammates::Teammate, tier_to_short};
 
 use crate::colors;
 
 /// Draw the encounter drill-down side panel for a specific player.
 ///
 /// `close` is set to `true` when the user dismisses the panel.
+#[allow(clippy::too_many_arguments)]
 pub fn draw_encounter_panel(
     ui: &mut egui::Ui,
     name: &str,
     encounters: &[PlayerEncounter],
     close: &mut bool,
+    tm_running: bool,
+    tm_progress: Option<(usize, usize)>,
+    tm_results: Option<&[Teammate]>,
+    tm_error: Option<&str>,
+    tm_start: &mut bool,
 ) {
     // Title row
     ui.horizontal(|ui| {
@@ -66,6 +72,10 @@ pub fn draw_encounter_panel(
         .color(sum_col),
     );
 
+    ui.separator();
+
+    // who they play with (opt-in scan)
+    draw_teammates_section(ui, tm_running, tm_progress, tm_results, tm_error, tm_start);
     ui.separator();
 
     // Encounter table
@@ -133,4 +143,81 @@ pub fn draw_encounter_panel(
                     }
                 });
         });
+}
+
+// the "who they play with" block at the top of the panel: a button, a live
+// progress bar while it trickles, then the recurring-teammates list.
+fn draw_teammates_section(
+    ui: &mut egui::Ui,
+    running: bool,
+    progress: Option<(usize, usize)>,
+    results: Option<&[Teammate]>,
+    error: Option<&str>,
+    start: &mut bool,
+) {
+    ui.label(
+        egui::RichText::new("Who they play with")
+            .strong()
+            .color(egui::Color32::from_rgb(200, 200, 215)),
+    );
+
+    if running {
+        let (done, total) = progress.unwrap_or((0, 0));
+        let frac = if total > 0 {
+            done as f32 / total as f32
+        } else {
+            0.0
+        };
+        ui.add(
+            egui::ProgressBar::new(frac)
+                .desired_width(380.0)
+                .text(format!("scanning {done}/{total} games…")),
+        );
+        ui.label(
+            egui::RichText::new("trickling slowly so riot doesnt rate-limit the account")
+                .color(colors::DIM)
+                .small(),
+        );
+    } else if let Some(list) = results {
+        if list.is_empty() {
+            ui.label(
+                egui::RichText::new("No recurring teammates in their last 15 comp games.")
+                    .color(colors::DIM)
+                    .small(),
+            );
+        } else {
+            for t in list {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(format!("×{}", t.games))
+                            .strong()
+                            .monospace()
+                            .color(egui::Color32::from_rgb(120, 200, 255)),
+                    );
+                    ui.label(egui::RichText::new(&t.name).small());
+                });
+            }
+        }
+        if ui.button("↻ Re-scan").clicked() {
+            *start = true;
+        }
+    } else if let Some(err) = error {
+        ui.label(
+            egui::RichText::new(format!("Couldn't scan: {err}"))
+                .color(egui::Color32::from_rgb(220, 120, 120))
+                .small(),
+        );
+        if ui.button("Try again").clicked() {
+            *start = true;
+        }
+    } else {
+        ui.label(
+            egui::RichText::new("Scan their last 15 competitive games for recurring teammates. Takes ~25s (trickled to stay safe).")
+                .color(colors::DIM)
+                .small(),
+        );
+        if ui.button("🔍 Find who they play with").clicked() {
+            *start = true;
+        }
+    }
 }

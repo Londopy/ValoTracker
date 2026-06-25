@@ -16,8 +16,10 @@ use eframe::egui;
 use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 use tray_icon::{TrayIconBuilder, TrayIconEvent};
 use valotracker_core::{
+    auth::Auth,
     discord::{DiscordRpc, PresenceUpdate},
     history::{MatchHistory, PlayerEncounter, SavedMatch},
+    teammates::{self, Teammate, TeammateMsg},
     updater::{self, DownloadMsg, UpdateState},
     Config, MatchSnapshot, ResolvedPlayer, ValoTrackerError,
 };
@@ -44,6 +46,8 @@ pub(crate) struct BgState {
     pub(crate) last_refresh: Option<Instant>,
     /// True once VALORANT has been detected at least once (lockfile found).
     pub(crate) valorant_detected: bool,
+    /// Cloned auth, surfaced so the ui can run on-demand teammate analysis.
+    pub(crate) auth: Option<Auth>,
 }
 
 impl Default for BgState {
@@ -55,6 +59,7 @@ impl Default for BgState {
             load_duration: None,
             last_refresh: None,
             valorant_detected: false,
+            auth: None,
         }
     }
 }
@@ -109,6 +114,12 @@ pub struct GuiApp {
     show_encounter: bool,
     encounter_name: String,
     encounter_data: Vec<PlayerEncounter>,
+    encounter_puuid: String,
+    // "who they play with" analysis state (opt-in, runs on its own thread)
+    teammate_rx: Option<mpsc::Receiver<TeammateMsg>>,
+    teammate_progress: Option<(usize, usize)>,
+    teammate_results: Option<Vec<Teammate>>,
+    teammate_error: Option<String>,
     history: Vec<SavedMatch>,
     history_sel: Option<usize>,
     status_msg: Option<(String, Instant)>,
@@ -190,6 +201,11 @@ impl GuiApp {
             show_encounter: false,
             encounter_name: String::new(),
             encounter_data: Vec::new(),
+            encounter_puuid: String::new(),
+            teammate_rx: None,
+            teammate_progress: None,
+            teammate_results: None,
+            teammate_error: None,
             history: Vec::new(),
             history_sel: None,
             status_msg: None,
@@ -265,6 +281,12 @@ impl GuiApp {
             self.encounter_name = name.to_owned();
             self.show_encounter = true;
         }
+        // fresh player → wipe any previous teammate-scan state
+        self.encounter_puuid = puuid.to_owned();
+        self.teammate_rx = None;
+        self.teammate_progress = None;
+        self.teammate_results = None;
+        self.teammate_error = None;
     }
 
     /// Drain tray icon / tray menu events and act on them.
@@ -343,6 +365,7 @@ fn bg_thread(
             let mut s = bg.lock().unwrap();
             s.valorant_detected = true;
             s.error = None;
+            s.auth = Some(engine.auth.clone());
         }
 
         // ── Main refresh loop ─────────────────────────────────────────────────
@@ -545,9 +568,43 @@ impl eframe::App for GuiApp {
 
         // ── Encounter side panel ──────────────────────────────────────────────
         if self.show_encounter {
+            // drain progress/results from a running teammate scan
+            if let Some(rx) = self.teammate_rx.take() {
+                let mut finished = false;
+                loop {
+                    match rx.try_recv() {
+                        Ok(TeammateMsg::Progress { done, total }) => {
+                            self.teammate_progress = Some((done, total));
+                        }
+                        Ok(TeammateMsg::Done(list)) => {
+                            self.teammate_results = Some(list);
+                            self.teammate_error = None;
+                            finished = true;
+                        }
+                        Ok(TeammateMsg::Failed(e)) => {
+                            self.teammate_error = Some(e);
+                            finished = true;
+                        }
+                        Err(_) => break,
+                    }
+                }
+                if finished {
+                    self.teammate_progress = None;
+                } else {
+                    self.teammate_rx = Some(rx);
+                    // keep repainting so the progress bar actually moves
+                    ctx.request_repaint_after(Duration::from_millis(250));
+                }
+            }
+
             let enc = self.encounter_data.clone();
             let name = self.encounter_name.clone();
+            let running = self.teammate_rx.is_some();
+            let progress = self.teammate_progress;
+            let results = self.teammate_results.clone();
+            let tm_error = self.teammate_error.clone();
             let mut close = false;
+            let mut start_scan = false;
             egui::SidePanel::right("encounter_panel")
                 .exact_width(440.0)
                 .frame(
@@ -556,10 +613,34 @@ impl eframe::App for GuiApp {
                         .inner_margin(egui::Margin::same(12.0)),
                 )
                 .show(ctx, |ui| {
-                    draw_encounter_panel(ui, &name, &enc, &mut close);
+                    draw_encounter_panel(
+                        ui,
+                        &name,
+                        &enc,
+                        &mut close,
+                        running,
+                        progress,
+                        results.as_deref(),
+                        tm_error.as_deref(),
+                        &mut start_scan,
+                    );
                 });
             if close {
                 self.show_encounter = false;
+            }
+            if start_scan && !running {
+                let auth = self.bg.lock().unwrap().auth.clone();
+                if let (Some(auth), false) = (auth, self.encounter_puuid.is_empty()) {
+                    let (tx, rx) = mpsc::channel();
+                    self.teammate_rx = Some(rx);
+                    self.teammate_results = None;
+                    self.teammate_error = None;
+                    self.teammate_progress = Some((0, 0));
+                    teammates::spawn_analysis(auth, self.encounter_puuid.clone(), tx);
+                } else {
+                    self.teammate_error =
+                        Some("Not connected to VALORANT yet — launch the game first.".to_owned());
+                }
             }
         }
 
