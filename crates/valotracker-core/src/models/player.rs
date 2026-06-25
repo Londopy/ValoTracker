@@ -25,6 +25,8 @@ pub struct ResolvedPlayer {
     // ── Agent ────────────────────────────────────────────────────────────────
     pub character_id: String,
     pub agent_name: String,
+    /// Equipped primary-weapon skin name (in-game only; empty if unknown).
+    pub weapon_skin: String,
 
     // ── Rank ─────────────────────────────────────────────────────────────────
     pub rank: PlayerRank,

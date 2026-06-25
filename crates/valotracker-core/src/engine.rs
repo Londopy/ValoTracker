@@ -5,9 +5,11 @@ use reqwest::Client;
 use crate::{
     agents,
     auth::Auth,
+    content,
     coregame,
     error::ValoTrackerError,
     lockfile::Lockfile,
+    loadouts,
     models::{match_data::MatchSnapshot, player::ResolvedPlayer},
     names, party, pregame, presence,
     rank::{self, RankCache},
@@ -141,7 +143,7 @@ impl Engine {
         party::tag_enemy_parties(&mut party_map_mut, &my_team, &player_teams);
 
         // 7. Assemble ResolvedPlayer list
-        let players: Vec<ResolvedPlayer> = raw_players
+        let mut players: Vec<ResolvedPlayer> = raw_players
             .iter()
             .map(|raw| {
                 assemble_player(
@@ -155,6 +157,18 @@ impl Engine {
                 )
             })
             .collect();
+
+        // make sure the content tables are loaded, then resolve each player's
+        // primary weapon skin (in-game only).
+        content::ensure_loaded(&self.remote_client).await;
+        if matches!(game_state, GameState::Ingame { .. }) {
+            let loadouts = loadouts::get_loadouts(&self.remote_client, &self.auth, &match_id).await;
+            for p in players.iter_mut() {
+                if let Some(skin_uuid) = loadouts.get(&p.puuid) {
+                    p.weapon_skin = content::skin_name(skin_uuid).unwrap_or_default();
+                }
+            }
+        }
 
         Ok(MatchSnapshot {
             game_state,
@@ -251,6 +265,7 @@ fn assemble_player(
         is_ally: raw.team_id == my_team,
         character_id: raw.character_id.clone(),
         agent_name: agents::resolve_agent_name(&raw.character_id),
+        weapon_skin: String::new(),
         rank,
         stats: stat,
         party_id,

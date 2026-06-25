@@ -23,6 +23,7 @@ pub mod agents;
 pub mod auth;
 pub mod client;
 pub mod config;
+pub mod content;
 pub mod coregame;
 #[cfg(feature = "discord")]
 pub mod discord;
@@ -30,6 +31,7 @@ pub mod engine;
 pub mod error;
 pub mod history;
 pub mod lockfile;
+pub mod loadouts;
 pub mod models;
 pub mod names;
 pub mod notifications;

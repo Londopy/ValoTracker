@@ -135,13 +135,16 @@ fn draw_player_row(
         egui::Label::new(egui::RichText::new(p_str).color(p_col).monospace()),
     );
 
-    // ── Agent ─────────────────────────────────────────────────────────────
-    ui.add_sized(
+    // ── Agent (hover shows their primary weapon skin) ──────────────────────
+    let agent_resp = ui.add_sized(
         [w[1], 20.0],
         egui::Label::new(
             egui::RichText::new(&player.agent_name).color(egui::Color32::from_rgb(200, 200, 200)),
         ),
     );
+    if !player.weapon_skin.is_empty() {
+        agent_resp.on_hover_text(format!("Skin: {}", player.weapon_skin));
+    }
 
     // ── Name (clickable if seen before) ───────────────────────────────────
     let name_col = if player.is_ally {
