@@ -22,6 +22,8 @@ mod views;
 fn run() {
     use eframe::egui;
 
+    init_file_logging();
+
     // Launched from the Windows startup registry entry → start hidden in tray
     let start_minimized = std::env::args().any(|a| a == "--minimized");
 
@@ -47,4 +49,25 @@ fn run() {
         Box::new(|cc| Ok(Box::new(app::GuiApp::new(cc)))),
     )
     .expect("eframe failed");
+}
+
+// logs to a file because theres no console when you just double-click the exe.
+// lands in %LOCALAPPDATA%\ValoTracker\valotracker.log so we can actually see
+// whats going on (like why ranks arent loading).
+#[cfg(feature = "gui")]
+fn init_file_logging() {
+    use tracing_subscriber::EnvFilter;
+    let dir = std::env::var("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir())
+        .join("ValoTracker");
+    let _ = std::fs::create_dir_all(&dir);
+    let appender = tracing_appender::rolling::never(&dir, "valotracker.log");
+    let _ = tracing_subscriber::fmt()
+        .with_writer(appender)
+        .with_ansi(false)
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .try_init();
 }

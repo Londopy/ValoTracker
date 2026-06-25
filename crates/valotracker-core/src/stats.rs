@@ -169,14 +169,25 @@ async fn fetch_competitive_updates(
         "/mmr/v1/players/{puuid}/competitiveupdates?queue=competitive&endIndex={}",
         HISTORY_FETCH_COUNT
     ));
-    let resp: CompetitiveUpdatesResponse = client
-        .get(&url)
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
-    Ok(resp.matches)
+    let resp = client.get(&url).send().await?;
+    if !resp.status().is_success() {
+        return Ok(Vec::new());
+    }
+    // parse loosely off a json Value so a renamed field doesnt blow up the whole
+    // thing (riot changes these shapes and the old strict structs meant one tiny
+    // change made everyone show 0 stats / unranked).
+    let json: serde_json::Value = serde_json::from_str(&resp.text().await.unwrap_or_default())
+        .unwrap_or(serde_json::Value::Null);
+    let mut out = Vec::new();
+    if let Some(arr) = json["Matches"].as_array() {
+        for m in arr {
+            out.push(CompetitiveMatch {
+                rr_earned: m["RankedRatingEarned"].as_i64().unwrap_or(0) as i32,
+                afk_penalty: m["AFKPenalty"].as_i64().map(|v| v as i32),
+            });
+        }
+    }
+    Ok(out)
 }
 
 async fn fetch_match_history(
@@ -188,14 +199,21 @@ async fn fetch_match_history(
         "/match-history/v1/history/{puuid}?queue=competitive&endIndex={}",
         HISTORY_FETCH_COUNT
     ));
-    let resp: MatchHistoryResponse = client
-        .get(&url)
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
-    Ok(resp.history.into_iter().map(|e| e.match_id).collect())
+    let resp = client.get(&url).send().await?;
+    if !resp.status().is_success() {
+        return Ok(Vec::new());
+    }
+    let json: serde_json::Value = serde_json::from_str(&resp.text().await.unwrap_or_default())
+        .unwrap_or(serde_json::Value::Null);
+    let mut ids = Vec::new();
+    if let Some(arr) = json["History"].as_array() {
+        for e in arr {
+            if let Some(id) = e["MatchID"].as_str() {
+                ids.push(id.to_string());
+            }
+        }
+    }
+    Ok(ids)
 }
 
 async fn fetch_match_details(
@@ -205,33 +223,41 @@ async fn fetch_match_details(
     match_id: &str,
 ) -> Option<MatchStat> {
     let url = auth.pvp_url(&format!("/match-details/v1/matches/{match_id}"));
-    let resp: MatchDetailsResponse = client
-        .get(&url)
-        .send()
-        .await
-        .ok()?
-        .error_for_status()
-        .ok()?
-        .json()
-        .await
-        .ok()?;
+    let resp = client.get(&url).send().await.ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let json: serde_json::Value = serde_json::from_str(&resp.text().await.ok()?).ok()?;
 
-    let player = resp.players.iter().find(|p| p.subject == puuid)?;
-    let stats = player.stats.as_ref()?;
+    let players = json["players"].as_array()?;
+    let me = players
+        .iter()
+        .find(|p| p["subject"].as_str() == Some(puuid))?;
+    let st = &me["stats"];
 
-    let total_shots = stats.headshots + stats.bodyshots + stats.legshots;
-    let team_id = &player.team_id;
-    let won = resp
-        .teams
-        .as_deref()
-        .and_then(|teams| teams.iter().find(|t| &t.team_id == team_id))
-        .map(|t| t.won)
+    let kills = st["kills"].as_u64().unwrap_or(0) as u32;
+    let deaths = st["deaths"].as_u64().unwrap_or(0) as u32;
+    let headshots = st["headshots"].as_u64().unwrap_or(0) as u32;
+    let bodyshots = st["bodyshots"].as_u64().unwrap_or(0) as u32;
+    let legshots = st["legshots"].as_u64().unwrap_or(0) as u32;
+    let total_shots = headshots + bodyshots + legshots;
+
+    // figure out if this player won by matching their team in the teams array
+    let team_id = me["teamId"].as_str().unwrap_or("");
+    let won = json["teams"]
+        .as_array()
+        .and_then(|teams| {
+            teams
+                .iter()
+                .find(|t| t["teamId"].as_str() == Some(team_id))
+                .map(|t| t["won"].as_bool().unwrap_or(false))
+        })
         .unwrap_or(false);
 
     Some(MatchStat {
-        kills: stats.kills,
-        deaths: stats.deaths,
-        headshots: stats.headshots,
+        kills,
+        deaths,
+        headshots,
         total_shots,
         won,
     })

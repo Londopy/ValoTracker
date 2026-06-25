@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use reqwest::Client;
 use serde::Deserialize;
+use tracing::warn;
 
 use crate::{auth::Auth, error::ValoTrackerError};
 
@@ -162,43 +163,70 @@ struct SeasonalInfo {
 /// Fetch the ranked MMR data for a single player.
 ///
 /// Endpoint: `GET https://pd.{shard}.a.pvp.net/mmr/v1/players/{puuid}`
+///
+/// we parse this loosely (straight off a json Value) on purpose. riot loves
+/// renaming/dropping fields in here, and the old strict structs meant one tiny
+/// change made the WHOLE thing fail to parse so everyone showed up as unranked.
+/// this way a missing field just falls back to a default instead of nuking it.
 pub async fn get_player_rank(
     client: &Client,
     auth: &Auth,
     puuid: &str,
 ) -> Result<PlayerRank, ValoTrackerError> {
     let url = auth.pvp_url(&format!("/mmr/v1/players/{puuid}"));
-    let mmr: MmrResponse = client
-        .get(&url)
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
+    let resp = client.get(&url).send().await?;
+    let status = resp.status();
+    let body = resp.text().await.unwrap_or_default();
 
-    let (tier, rr, leaderboard_rank) = mmr
-        .latest_competitive_update
-        .map(|u| {
-            (
-                u.tier_after_update,
-                u.rr_after_update,
-                u.leaderboard_ranked.unwrap_or(0),
-            )
-        })
-        .unwrap_or((0, 0, 0));
+    // if riot didnt give us a 2xx, log WHY (bad client version, auth, rate limit)
+    // so we can actually tell whats wrong instead of guessing. then bail to default.
+    if !status.is_success() {
+        warn!(
+            "rank: mmr returned {} for {} — {}",
+            status,
+            puuid,
+            body.chars().take(160).collect::<String>()
+        );
+        return Ok(PlayerRank::default());
+    }
 
-    // Find peak rank across all seasons
-    let (peak_tier, peak_episode, peak_act) = find_peak_rank(&mmr.seasonal_info);
+    let json: serde_json::Value = serde_json::from_str(&body).unwrap_or(serde_json::Value::Null);
 
-    // Win rate from current season
-    let (win_rate, games_played) = current_season_stats(&mmr.seasonal_info);
+    // current rank + rr off the latest competitive update
+    let latest = &json["LatestCompetitiveUpdate"];
+    let tier = latest["TierAfterUpdate"].as_u64().unwrap_or(0) as u8;
+    let rr = latest["RankedRatingAfterUpdate"].as_i64().unwrap_or(0) as i32;
+    let leaderboard_rank = latest["LeaderboardRanked"].as_u64().unwrap_or(0) as u32;
+
+    // walk every season we got: peak tier = highest tier ever, and grab the win
+    // rate from whichever season they played the most games in (their "current").
+    let mut peak_tier: u8 = tier;
+    let mut most_games: u64 = 0;
+    let mut win_rate: f32 = 0.0;
+    let mut games_played: u32 = 0;
+
+    if let Some(seasons) = json["SeasonalInfoBySeasonID"].as_object() {
+        for season in seasons.values() {
+            let ct = season["CompetitiveTier"].as_u64().unwrap_or(0) as u8;
+            if ct > peak_tier {
+                peak_tier = ct;
+            }
+            let games = season["NumberOfGames"].as_u64().unwrap_or(0);
+            if games > most_games {
+                most_games = games;
+                let wins = season["NumberOfWins"].as_u64().unwrap_or(0);
+                win_rate = wins as f32 / games as f32;
+                games_played = games as u32;
+            }
+        }
+    }
 
     Ok(PlayerRank {
         tier,
         rr,
         peak_tier,
-        peak_episode,
-        peak_act,
+        peak_episode: 0,
+        peak_act: 0,
         leaderboard_rank,
         win_rate,
         games_played,
