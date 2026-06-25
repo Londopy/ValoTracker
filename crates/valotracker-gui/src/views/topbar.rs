@@ -18,6 +18,7 @@ pub fn draw_topbar(
     do_save: &mut bool,
     do_history: &mut bool,
     do_settings: &mut bool,
+    do_wiki: &mut bool,
     update_available: Option<&str>,
     download_state: &DownloadState,
     do_update: &mut bool,
@@ -94,6 +95,12 @@ pub fn draw_topbar(
             // Settings gear (far right)
             if ui.button("⚙").on_hover_text("Settings").clicked() {
                 *do_settings = true;
+            }
+            ui.separator();
+
+            // Help / wiki
+            if ui.button("❔").on_hover_text("Help / Wiki").clicked() {
+                *do_wiki = true;
             }
             ui.separator();
 

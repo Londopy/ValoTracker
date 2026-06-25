@@ -119,6 +119,7 @@ pub struct GuiApp {
     tray: Option<TrayState>,
     quit_requested: bool,
     show_settings: bool,
+    show_wiki: bool,
 
     // Auto-updater
     update_rx: Option<mpsc::Receiver<UpdateState>>,
@@ -196,6 +197,7 @@ impl GuiApp {
             tray: build_tray(),
             quit_requested: false,
             show_settings: false,
+            show_wiki: false,
             update_rx,
             update_available: None,
             show_update_confirm: false,
@@ -566,6 +568,7 @@ impl eframe::App for GuiApp {
         let mut do_save = false;
         let mut do_history = false;
         let mut do_settings = false;
+        let mut do_wiki = false;
         let mut do_update = false;
         let upd_available = self.update_available.clone();
         let dl_state = self.download_state.clone();
@@ -584,6 +587,7 @@ impl eframe::App for GuiApp {
                     &mut do_save,
                     &mut do_history,
                     &mut do_settings,
+                    &mut do_wiki,
                     upd_available.as_deref(),
                     &dl_state,
                     &mut do_update,
@@ -591,6 +595,12 @@ impl eframe::App for GuiApp {
             });
         if do_update {
             self.show_update_confirm = true;
+        }
+        if do_wiki {
+            self.show_wiki = true;
+        }
+        if self.show_wiki {
+            crate::views::wiki::draw_wiki_modal(ctx, &mut self.show_wiki);
         }
 
         // the "wanna update?" popup

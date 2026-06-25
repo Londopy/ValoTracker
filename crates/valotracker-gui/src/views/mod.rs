@@ -8,3 +8,4 @@ pub mod idle;
 pub mod match_view;
 pub mod settings;
 pub mod topbar;
+pub mod wiki;
