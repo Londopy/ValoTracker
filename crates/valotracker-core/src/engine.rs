@@ -58,7 +58,7 @@ impl Engine {
         // 1. Determine game state, queue ID, and map name from presence
         let presences = presence::get_presences(&self.local_client, &self.lockfile).await?;
         let game_state = presence::get_game_state(&presences, &self.auth.puuid);
-        let (queue_id, map_name) = presence::get_match_meta(&presences, &self.auth.puuid);
+        let (queue_id, map_path) = presence::get_match_meta(&presences, &self.auth.puuid);
 
         let (match_id, raw_players): (String, Vec<RawPlayer>) = match &game_state {
             GameState::Pregame { .. } => {
@@ -160,6 +160,7 @@ impl Engine {
         // make sure the content tables are loaded, then resolve each player's
         // primary weapon skin (in-game only).
         content::ensure_loaded(&self.remote_client).await;
+        let map_name = content::map_name(&map_path);
         if matches!(game_state, GameState::Ingame { .. }) {
             let loadouts = loadouts::get_loadouts(&self.remote_client, &self.auth, &match_id).await;
             for p in players.iter_mut() {
@@ -263,7 +264,8 @@ fn assemble_player(
         team_id: raw.team_id.clone(),
         is_ally: raw.team_id == my_team,
         character_id: raw.character_id.clone(),
-        agent_name: agents::resolve_agent_name(&raw.character_id),
+        agent_name: content::agent_name(&raw.character_id)
+            .unwrap_or_else(|| agents::resolve_agent_name(&raw.character_id)),
         weapon_skin: String::new(),
         rank,
         stats: stat,

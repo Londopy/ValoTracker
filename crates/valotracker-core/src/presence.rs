@@ -165,10 +165,10 @@ pub fn get_match_meta(presences: &[PlayerPresence], puuid: &str) -> (String, Str
             } else {
                 d.queue_id.clone()
             };
-            let map = map_path_to_name(&d.match_map);
+            let map = d.match_map.clone();
             (queue, map)
         }
-        None => ("unknown".to_owned(), "Unknown Map".to_owned()),
+        None => ("unknown".to_owned(), String::new()),
     }
 }
 
@@ -232,6 +232,7 @@ fn decode_private(b64: &str) -> Result<PresencePrivate, ValoTrackerError> {
 /// `/Game/Maps/Ascent/Ascent` → `"Ascent"`
 /// `/Game/Maps/Triad/Triad`   → `"Triad"` (Haven's internal name)
 /// `""`                       → `"Unknown Map"`
+#[allow(dead_code)]
 fn map_path_to_name(path: &str) -> String {
     path.split('/')
         .rfind(|s| !s.is_empty())
