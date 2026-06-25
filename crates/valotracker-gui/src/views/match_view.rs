@@ -43,15 +43,15 @@ pub fn draw_match_view(
     let short = config.display.short_ranks;
 
     // Column pixel widths
-    const W: [f32; 12] = [
-        44.0, 100.0, 185.0, 110.0, 38.0, 90.0, 45.0, 45.0, 46.0, 38.0, 45.0, 35.0,
+    const W: [f32; 13] = [
+        44.0, 100.0, 185.0, 110.0, 38.0, 90.0, 45.0, 45.0, 46.0, 38.0, 45.0, 60.0, 35.0,
     ];
 
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
             egui::Grid::new("match_grid")
-                .num_columns(12)
+                .num_columns(13)
                 .striped(false)
                 .spacing([5.0, 3.0])
                 .min_col_width(0.0)
@@ -59,7 +59,7 @@ pub fn draw_match_view(
                     // ── Column headers ────────────────────────────────────────
                     for (i, h) in [
                         "PTY", "AGENT", "NAME", "RANK", "RR", "PEAK", "HS%", "WR%", "K/D", "LVL",
-                        "ΔRR", "MET",
+                        "ΔRR", "FORM", "MET",
                     ]
                     .iter()
                     .enumerate()
@@ -115,7 +115,7 @@ fn draw_player_row(
     ui: &mut egui::Ui,
     player: &valotracker_core::ResolvedPlayer,
     config: &Config,
-    w: &[f32; 12],
+    w: &[f32; 13],
     short: bool,
     open_enc: &mut Option<(String, String)>,
 ) {
@@ -299,6 +299,33 @@ fn draw_player_row(
         ),
     );
 
+    // ── Recent form (W/L streak, most recent first) ───────────────────────
+    let form = &player.stats.recent_results;
+    if form.is_empty() {
+        ui.add_sized(
+            [w[11], 20.0],
+            egui::Label::new(egui::RichText::new("—").monospace().color(colors::DIM)),
+        );
+    } else {
+        let mut job = egui::text::LayoutJob::default();
+        for &won in form.iter().take(5) {
+            let (txt, col) = if won {
+                ("W", egui::Color32::from_rgb(100, 220, 140))
+            } else {
+                ("L", egui::Color32::from_rgb(220, 100, 100))
+            };
+            job.append(
+                txt,
+                1.0,
+                egui::TextFormat {
+                    color: col,
+                    ..Default::default()
+                },
+            );
+        }
+        ui.add_sized([w[11], 20.0], egui::Label::new(job));
+    }
+
     // ── MET ───────────────────────────────────────────────────────────────
     let met_str = if player.times_seen > 0 {
         player.times_seen.to_string()
@@ -311,7 +338,7 @@ fn draw_player_row(
         colors::DIM
     };
     ui.add_sized(
-        [w[11], 20.0],
+        [w[12], 20.0],
         egui::Label::new(egui::RichText::new(met_str).monospace().color(met_col)),
     );
 }

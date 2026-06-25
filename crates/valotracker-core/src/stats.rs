@@ -18,6 +18,8 @@ pub struct PlayerStats {
     pub avg_rr_delta: f32,
     /// True if the player has received an AFK penalty recently.
     pub afk_penalty: bool,
+    /// Recent match results, most-recent-first (true = win), up to last N games.
+    pub recent_results: Vec<bool>,
 }
 
 // ── Raw API structs ──────────────────────────────────────────────────────────
@@ -135,6 +137,8 @@ pub async fn get_player_stats(
     let afk_penalty = comp_updates.iter().any(|m| m.afk_penalty.unwrap_or(0) < 0);
 
     let (headshot_pct, kd_ratio, win_rate) = aggregate_stats(&details);
+    // most-recent-first win/loss for the little form streak in the table
+    let recent_results: Vec<bool> = details.iter().map(|s| s.won).collect();
 
     Ok(PlayerStats {
         headshot_pct,
@@ -142,6 +146,7 @@ pub async fn get_player_stats(
         win_rate,
         avg_rr_delta,
         afk_penalty,
+        recent_results,
     })
 }
 
