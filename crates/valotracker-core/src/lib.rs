@@ -41,6 +41,7 @@ pub mod presence;
 pub mod rank;
 pub mod state;
 pub mod stats;
+pub mod teammates;
 pub mod updater;
 pub mod websocket;
 
