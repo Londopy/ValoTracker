@@ -152,7 +152,7 @@ fn run(auth: &Auth, target: &str, tx: &Sender<TeammateMsg>) -> Result<(), String
         .filter(|(_, (_, games))| *games >= 2)
         .map(|(puuid, (name, games))| Teammate { puuid, name, games })
         .collect();
-    result.sort_by(|a, b| b.games.cmp(&a.games));
+    result.sort_by_key(|t| std::cmp::Reverse(t.games));
 
     let _ = tx.send(TeammateMsg::Done(result));
     Ok(())
