@@ -5,11 +5,10 @@ use reqwest::Client;
 use crate::{
     agents,
     auth::Auth,
-    content,
-    coregame,
+    content, coregame,
     error::ValoTrackerError,
-    lockfile::Lockfile,
     loadouts,
+    lockfile::Lockfile,
     models::{match_data::MatchSnapshot, player::ResolvedPlayer},
     names, party, pregame, presence,
     rank::{self, RankCache},
